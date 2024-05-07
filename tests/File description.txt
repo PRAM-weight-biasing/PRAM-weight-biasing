@@ -1,0 +1,13 @@
+pre_train_model_MLP.py : MNIST로 MLP training, weight distribution plot
+prune_weights.py : local pruning, global pruning, weight distribution plot
+network.py : train, visualize, pruning 
+myModule.py : nn과 관련 없는 method
+
+test_MLP_pruning.ipynb : local/global pruning 예시
+
+
+
+### test 해보기 ###
+training 해둔 TestRun/Test_2024-05-07 16:27:42 으로 ipynb 파일이나 prune_weights.py 돌려보시면 됩니다!!!
+or
+pre_train_model_MLP.py > prune_weights.py 차례로 돌리기
