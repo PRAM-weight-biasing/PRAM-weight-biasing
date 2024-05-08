@@ -21,5 +21,10 @@ rootutils       # standardizing the project root setup
 pre-commit      # hooks for applying linters on commit
 rich            # beautiful text formatting in terminal
 pytest          # tests
+<<<<<<< HEAD
 # sh            # for running bash commands in some tests (linux/macos only)
 aihwkit
+=======
+aihwkit         # IBM analog hardware neural network simulation toolkit
+# sh            # for running bash commands in some tests (linux/macos only)
+>>>>>>> 40afabe (Added aihwkit to requirements)
