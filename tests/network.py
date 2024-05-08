@@ -17,6 +17,7 @@ from sklearn.metrics import r2_score
 from sklearn.metrics import mean_absolute_percentage_error
 
 import matplotlib.pyplot as plt
+import myModule
     
 
 
@@ -247,12 +248,14 @@ class PruneModel():
 
     def Vis_global_w(self) -> None:
         self.Vis_w_dist(self.premodel)
-        plt.savefig(f'{self.folder_path}/weight_distribution_global.png')
+        file_name = myModule.get_unique_filename(self.folder_path, 'weight_dist_global', 'png')
+        plt.savefig(f'{self.folder_path}/{file_name}')
         plt.clf()  
 
     def Vis_local_w(self) -> None:
         for name, module in self.premodel.named_modules():
             if isinstance(module, nn.Linear):
                 self.Vis_w_dist(module)
-                plt.savefig(f'{self.folder_path}/weight_distribution_{name}.png')
-                plt.clf()  
+                file_name = myModule.get_unique_filename(self.folder_path, f'weight_dist_{name}', 'png')
+                plt.savefig(f'{self.folder_path}/{file_name}')
+                plt.clf()
