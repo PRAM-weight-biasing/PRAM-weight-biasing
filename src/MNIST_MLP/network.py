@@ -1,24 +1,8 @@
 from collections import OrderedDict
-import pandas as pd
-import numpy as np
-import os
-from datetime import datetime
 
 import torch
 import torch.nn as nn
-import torch.nn.utils.prune as prune
-import torch.nn.functional as F
-from torch.optim import Adam, lr_scheduler
-from torch.utils.data import Dataset, DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-import torchvision.datasets as dsets
-from torchvision.transforms import ToTensor
-
-from sklearn.metrics import r2_score
-from sklearn.metrics import mean_absolute_percentage_error
-
-import matplotlib.pyplot as plt
-import myModule
 
 
 class MLP(nn.Module):

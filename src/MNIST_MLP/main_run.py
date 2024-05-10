@@ -1,6 +1,10 @@
-
+import torch
 
 """==================================================="""
+# check hardware
+device = 'cpu'
+if torch.cuda.is_available():
+    device = 'cuda'
 
 # import and parse datasets
 
