@@ -2,9 +2,10 @@ from collections import OrderedDict
 
 import torch
 import torch.nn as nn
+from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-
+"""=============================================================="""
 class MLP(nn.Module):
     def __init__(self):
         super().__init__()
@@ -109,11 +110,12 @@ class MLP(nn.Module):
                 scheduler.step(test_loss)
 
                 # print training results
-                print(f"Epoch {epoch+1}/{self.epochs} (learning rate: {optimizer.param_groups[0]['lr']:.1e}),
-                       \t\t Train loss: {total_train_loss: .4e}, \tTest accuracy: {test_acc:.2%}")
+                print(f"Epoch {epoch+1}/{self.epochs} (learning rate: {optimizer.param_groups[0]['lr']:.1e})"
+                       f"\t\t Train loss: {total_train_loss: .4e}, \tTest accuracy: {test_acc:.2%}")
 
             # print train final results
-            print(f"=======================\n,
-                  Best test loss: {self.best_loss:.4e}, Test accuracy: {self.best_acc:.2%} ,
-                  at epoch {self.best_epoch}, lr {self.best_lr:.1e},
-                  =======================\n")
+            print(f"=======================\n"
+                  f"Best test loss: {self.best_loss:.4e}, Test accuracy: {self.best_acc:.2%}"
+                  f"at epoch {self.best_epoch}, lr {self.best_lr:.1e}"
+                  "=======================\n")
+            

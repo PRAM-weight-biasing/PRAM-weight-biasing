@@ -1,0 +1,3 @@
+Folders are separated by (dataset)_(network structure)
+
+Go into individual folders to train software baseline networks
