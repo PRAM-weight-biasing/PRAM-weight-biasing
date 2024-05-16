@@ -59,7 +59,6 @@ class vis_model():
         Args:
             y_ans (tensor): tensor of test dataset ground truth label
             y_pred (tensor): tensor of predicted outputs from test dataset
-            savedir (str): directory for saving the plotted figure
 
         Returns:
             _type_: None

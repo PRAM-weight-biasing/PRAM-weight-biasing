@@ -157,3 +157,4 @@ configs/local/default.yaml
 # customize 
 tests/MNIST_data
 tests/TestRun
+MNIST_data

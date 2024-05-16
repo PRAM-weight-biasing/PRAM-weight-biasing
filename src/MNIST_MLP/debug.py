@@ -8,10 +8,6 @@ from network import MLP
 
 """=============================================================="""
 
-ex_net = MLP()
-copiednet = copy.deepcopy(ex_net)
-#print(ex_net._modules)
-for name, para in copiednet.named_parameters():
-    if 'fc1.weight' in name:
-        print(1)
-        print(name)
+astr = input("Enter remarks")
+
+print(astr)
