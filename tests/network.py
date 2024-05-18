@@ -32,6 +32,8 @@ from aihwkit.inference import PCMLikeNoiseModel, GlobalDriftCompensation
 from aihwkit.nn.conversion import convert_to_analog
     
 
+    
+
 
 class simpleMLP(nn.Module):
     def __init__(self):
@@ -62,7 +64,7 @@ class TrainModel():
         best_loss = float('inf')  # Initialize with a high number
         best_accuracy = 0
         best_Epoch, best_LR = 0, 0
-        patience = 50  # Number of epochs to wait for improvement before stopping
+        patience = 5  # Number of epochs to wait for improvement before stopping
         train_loss_list = []
         test_loss_list = []
         accuracy_list = []
@@ -138,6 +140,79 @@ class TrainModel():
             test_accuracy = 100* (correct / total)
                 
             return test_loss.item(), test_accuracy
+        
+    def re_MNIST_MLP(self, learning_rate: float, num_epochs: int, folder_path:str, masks:dict) -> None:
+                               
+        # Define the cost & optimizer
+        loss_fn = nn.CrossEntropyLoss()
+        optimizer = Adam(self.model.parameters(), lr= learning_rate)
+       
+        # Initialize parameter
+        best_loss = float('inf')  # Initialize with a high number
+        best_accuracy = 0
+        best_Epoch, best_LR = 0, 0
+        patience = 5  # Number of epochs to wait for improvement before stopping
+        train_loss_list = []
+        test_loss_list = []
+        accuracy_list = []
+
+        # # Define the learning rate scheduler
+        scheduler = ReduceLROnPlateau(optimizer, 'min', patience=patience)
+
+        # Train and test
+        self.model.train()
+        
+        for epoch in range(num_epochs):
+            
+            # train
+            total_train_loss = 0
+
+            for X, Y in self.train_dataloader:
+                X = X.view(-1, 28 * 28)  # change size to (batch_size, 784)
+                y_pred = self.model(X)
+                loss = loss_fn(y_pred, Y)
+                total_train_loss += loss.item()
+
+                optimizer.zero_grad()   # Initialize the optimizer
+                loss.backward()         # calculate gradient
+                self.apply_masks(self.model, masks)  # Apply the masks to keep zero weights frozen
+                optimizer.step()        # update weights : w -= lr * w.grad
+
+            total_train_loss /= len(self.train_dataloader)
+            train_loss_list.append(total_train_loss)
+
+            # test
+            self.model.eval()
+            test_loss, test_accuracy = self.eval_mnist_mlp(self.model, self.test_dataloader)
+            test_loss_list.append(test_loss)
+            accuracy_list.append(test_accuracy)
+
+            # If the accuracy improved, save the model
+            if test_accuracy > best_accuracy:
+                best_accuracy = test_accuracy
+                best_loss = test_loss
+
+                # save only best model parameter
+                torch.save(self.model.state_dict(), f'{folder_path}/best_model_param.pth')
+                best_Epoch, best_LR = epoch+1, optimizer.param_groups[0]['lr']
+
+                # Save the model
+                torch.save(self.model, f'{folder_path}/best_model.pth')
+
+            scheduler.step(test_loss)
+
+            # Print info 
+            if epoch % 5 == 0:  
+                print(f"Epoch {epoch+1}/{num_epochs}, \tLearning Rate: {optimizer.param_groups[0]['lr']:.1e}, \tTrain Loss: {total_train_loss:.6f}, \tTest Loss: {test_loss:.6f}, \tTest Accuracy : {test_accuracy:.2f}%")
+        
+        print(f"\n test loss: {best_loss:.6f}, Best test accuracy: {best_accuracy:.2f}%, Epoch: {best_Epoch}, LR: {best_LR:.2e}\n")
+        self.Vis_accuracy(num_epochs, train_loss_list, test_loss_list, accuracy_list, folder_path)
+        
+    def apply_masks(self, model, masks: dict):
+        # Function to apply masks during the backward pass
+        for name, param in model.named_parameters():
+            if name in masks:
+                param.grad *= masks[name]
     
     def Vis_accuracy(self, epochs, train_loss: list, test_loss: list, accuracy_list: list, folder_path: str) -> None:
         # Visualize loss and accuracy per epoch
@@ -200,7 +275,8 @@ class Vis_Model():
             if 'weight' in name:
                 all_weights.extend(param.detach().numpy().flatten())
                 
-        plt.hist(all_weights, bins=30, alpha=1)
+        plt.figure(figsize=(8,6))
+        plt.hist(all_weights, bins=200, alpha=1)
         plt.title('Weight Distribution')
         plt.xlabel('Weight value')
         # plt.xlim([-4,4])
@@ -286,7 +362,7 @@ class PruneModel():
             if 'weight' in name:
                 all_weights.extend(param.detach().numpy().flatten())
             
-        plt.hist(all_weights, bins=100, alpha=1)
+        plt.hist(all_weights, bins=200, alpha=1)
         plt.title('Weight Distribution')
         plt.xlabel('Weight value')
         plt.ylabel('Frequency')
@@ -341,7 +417,7 @@ class InfModel(TrainModel):
 
         return analog_model
 
-    def EvalModel(self, analog_model, test_loader, t_inferences: list, n_reps: int) :
+    def hw_EvalModel(self, analog_model, test_loader, t_inferences: list, n_reps: int) :
         inference_accuracy_values = torch.zeros((len(t_inferences), n_reps))
 
         analog_model.eval()
@@ -355,4 +431,16 @@ class InfModel(TrainModel):
             print(
                     f"Test set accuracy (%) at t={t}s: \t mean: {inference_accuracy_values[t_id].mean() :.6f}, \t std: {inference_accuracy_values[t_id].std() :.6f}"
                 )
+            
+    def sw_EvalModel(self, test_loader, n_reps: int) :
+        inference_accuracy_values = torch.zeros(n_reps)
+
+        self.model.eval()
+        for i in range(n_reps):
+            test_loss, test_accuracy = self.eval_mnist_mlp(self.model, test_loader)
+            inference_accuracy_values[i] = test_accuracy
+            
+        print(
+                f"Test set accuracy (%) : \t mean: {inference_accuracy_values.mean() :.6f}, \t std: {inference_accuracy_values.std() :.6f}"
+            )
             

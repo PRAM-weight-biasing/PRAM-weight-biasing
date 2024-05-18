@@ -22,10 +22,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
 """ need to change """
-test_time = "Test_2024-05-07 16:27:42" 
+test_time = "Test_2024-05-18 14:24:10/retrain" 
 # ===========================================
 folder_path = dir_name + test_time
-model_name = 'global_pruned_model.pth'
+model_name = 'best_model.pth'
 
 
 # test dataset
@@ -37,11 +37,22 @@ mnist_test = dsets.MNIST(root='MNIST_data/',
 batch_size = 100
 test_dataloader = DataLoader(mnist_test, batch_size= batch_size, shuffle=False)
 
+
+""" inference with sw """
+n_reps = 10   # Number of inference repetitions.
+
+inf_model = InfModel(model_name, folder_path)
+inf_model.sw_EvalModel(test_dataloader, n_reps)
+
+
+""" inference with hw (simulation) """
 # convert to aihwkit simulator
 inf_model = InfModel(model_name, folder_path)
 analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model using aihwkit
 
 # Inference
 t_inferences = [0.0, 3600.0, 86400.0]  # Times to perform infernece.
-n_reps = 3   # Number of inference repetitions.
-inf_model.EvalModel(analog_model, test_dataloader, t_inferences, n_reps)
+n_reps = 10   # Number of inference repetitions.
+inf_model.hw_EvalModel(analog_model, test_dataloader, t_inferences, n_reps)
+
+""" inference with sw """

@@ -3,7 +3,7 @@ import random
 import os
 
 # import customized files
-from network import PruneModel
+from network import PruneModel, TrainModel, Vis_Model
 
 ### =============================================================
 
@@ -15,12 +15,12 @@ torch.manual_seed(777)
 dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
 """ need to change """
-test_time = "Test_2024-05-07 16:27:42" 
+test_time = "Test_2024-05-18 14:24:10" 
 # ===========================================
 folder_path = dir_name + test_time
 model_name = 'best_model.pth'
 
-prune_percentage = 0.3
+prune_percentage = 0.6
 
 # local pruning : prune each layer
 PruneTest1 = PruneModel(prune_percentage, model_name, folder_path)

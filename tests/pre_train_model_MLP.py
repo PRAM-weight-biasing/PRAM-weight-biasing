@@ -30,13 +30,13 @@ mnist_test = dsets.MNIST(root='MNIST_data/',
                          download=True)
 
 # train_test dataloader
-batch_size = 32
+batch_size = 100
 train_dataloader = DataLoader(mnist_train, batch_size= batch_size, shuffle=True)
 test_dataloader = DataLoader(mnist_test, batch_size= batch_size, shuffle=False)
 
 
 """ Training """
-num_epochs = 100
+num_epochs = 30
 lr = 0.01
 
 model = simpleMLP()
