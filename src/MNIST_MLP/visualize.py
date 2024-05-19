@@ -24,26 +24,29 @@ class vis_model():
         """
         plt.figure(figsize=(12, 8))
         
-        plt.plot(np.arange(0, len(self.model.acc_list)),
-                 [x * 100 for x in self.model.acc_list], 'bs-')
+        plt.plot(np.arange(0, len(self.model.accuracy)),
+                 [x * 100 for x in self.model.accuracy], 'bs-')
         
         plt.xlabel('Epoch', fontsize=20)
         plt.ylabel('Accuracy (%)', fontsize=20)
         
         plt.savefig(f'{self.savedir}/accuracy.png')
         
+        plt.clf()
+        plt.close()
+        
         return None
 
     def loss_evo(self) -> None:
-        """Plots loss evolution through training epochs
+        """Plots training loss evolution through training epochs
 
         Returns:
             _type_: None
         """
         plt.figure(figsize=(12, 8))
         
-        plt.plot(np.arange(0, len(self.model.loss_list)), 
-                 self.model.loss_list, color='black')
+        plt.plot(np.arange(0, len(self.model.train_loss_list)), 
+                 self.model.train_loss_list, color='black')
         plt.yscale('log')
         
         plt.xlabel('Epoch', fontsize=20)
@@ -51,20 +54,24 @@ class vis_model():
         
         plt.savefig(f'{self.savedir}/loss.png')
         
+        plt.clf()
+        plt.close()
+        
         return None
 
-    def confusion_matrix(self, y_ans: tensor, y_pred: tensor) -> None:
+    def confusion_matrix(self, y_ans: tensor, y_pred: tensor, device: str) -> None:
         """Plots (0~9) digit confusion matrix of predicted/ground truth
 
         Args:
             y_ans (tensor): tensor of test dataset ground truth label
             y_pred (tensor): tensor of predicted outputs from test dataset
+            device (str): target device where y_ans and y_pred are on
 
         Returns:
             _type_: None
         """
         # create confusion matrix of all 10 digits with torch.metrics library
-        metric = MulticlassConfusionMatrix(num_classes=10)
+        metric = MulticlassConfusionMatrix(num_classes=10).to(device)
         metric.update(y_pred, y_ans)
 
         # fig_ is pyplot figure object
@@ -117,5 +124,26 @@ class vis_model():
         # save figure and clear figure
         plt.savefig(f'{self.savedir}/{keyword}_weights.png')
         plt.clf()
+        plt.close()
         
         return None
+    
+def vis_accuracy_errbar(acc_list: list, savedir: str) -> None:
+    """Plots errorbar figure of training accuracies over 10 different seeds
+
+    Args:
+        acc_list (list): accuracy list of list
+        savedir (str): save directory
+    """
+    plt.figure(figsize=(12, 8))
+    
+    acc_mean    = np.mean(acc_list, axis=0)
+    acc_std     = np.std(acc_list, axis=0)
+    
+    plt.errorbar(np.arange(0, len(acc_list[0])), acc_mean, acc_std, 
+                 fmt='bs-', capsize=4)
+    
+    plt.xlabel('Epoch', fontsize=20)
+    plt.ylabel('Accuracy (%)', fontsize=20)
+        
+    plt.savefig(f'{savedir}/accuracy_errbar.png')

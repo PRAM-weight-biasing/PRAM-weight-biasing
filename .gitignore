@@ -158,3 +158,5 @@ configs/local/default.yaml
 tests/MNIST_data
 tests/TestRun
 MNIST_data
+src/MNIST_MLP/debug.py
+results/MNIST_MLP
