@@ -16,10 +16,12 @@ from visualize import vis_model
 from device_loader import DeviceDataLoader
 from device_loader import to_device
 
+import aihwkit
+from aihwkit.nn import AnalogLinear
+from aihwkit.simulator.configs import InferenceRPUConfig
+from aihwkit.simulator.configs.devices import OneSidedUnitCell
+
 """==================================================="""
-acc_list = [[0, 1, 2, 3, 4], [2, 3, 4, 5, 6], [3, 4, 5, 6, 7]]
-acc_mean    = np.mean(acc_list, axis=0)
-acc_std     = np.std(acc_list, axis=0)
-plt.errorbar(np.arange(0, len(acc_list[0])), acc_mean, acc_std,
-             fmt='bs-', capsize=4)
-plt.savefig('test_errbar.png')
+rpu_config      = InferenceRPUConfig()
+rpu_config.device = OneSidedUnitCell()
+print(rpu_config.device)

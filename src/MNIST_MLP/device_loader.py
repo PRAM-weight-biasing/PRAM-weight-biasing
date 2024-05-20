@@ -3,6 +3,8 @@ import torch
 """==================================="""
 
 class DeviceDataLoader():
+    """class for loading model or dataset to targetted device
+    """
     def __init__(self, dl, device) -> None:
         self.dl     = dl
         self.device = device
@@ -15,6 +17,14 @@ class DeviceDataLoader():
         return len(self.dl)
     
     def to_device(self, data):
+        """sends data to device specified in object
+
+        Args:
+            data (model or dataset): dataset (neural net model or training dataset)
+
+        Returns:
+            _type_: wrapped dataset (do not assign model to a variable)
+        """
         self.__check_device()
         if isinstance(data, (list, tuple)):
             return [self.to_device(x) for x in data]

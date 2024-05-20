@@ -20,7 +20,7 @@ def sort_folders(param_list: list, batch_size: int, remarks: str, base_path: str
     main_folder_path    = base_path+'/'+main_folder_name
     while True:
         if os.path.exists(main_folder_path):
-            main_folder_path = main_folder_path + "_"
+            main_folder_path = main_folder_path + "_" # add underscore if path already exists
         else:
             break
     os.mkdir(main_folder_path) 
