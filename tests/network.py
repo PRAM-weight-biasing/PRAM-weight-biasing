@@ -30,9 +30,7 @@ from aihwkit.simulator.configs import (
 )
 from aihwkit.inference import PCMLikeNoiseModel, GlobalDriftCompensation
 from aihwkit.nn.conversion import convert_to_analog
-    
-
-    
+from aihwkit.simulator.presets.devices import PCMPresetDevice
 
 
 class simpleMLP(nn.Module):
@@ -282,11 +280,11 @@ class Vis_Model():
         # plt.xlim([-4,4])
         plt.ylabel('Frequency')
         plt.grid(True, axis='y')
-        plt.savefig(f'{self.folder_path}/weight_distribution.png')
+        plt.savefig(f'{self.folder_path}/w_dist.png')
         
         # plot in log scale
         plt.yscale('log')
-        plt.savefig(f'{self.folder_path}/weight_distribution(log).png')
+        plt.savefig(f'{self.folder_path}/w_dist(log).png')
         plt.clf()  
         
 
@@ -393,14 +391,12 @@ class InfModel(TrainModel):
         
     def SetConfig(self) :
         rpu_config = InferenceRPUConfig()
+        rpu_config.device = PCMPresetDevice()
         
         """ Weight modifier parameter """
-        rpu_config.modifier.type = WeightModifierType.ADD_NORMAL  # Fwd/bwd weight noise.
-        rpu_config.modifier.std_dev = 0.1
-        rpu_config.modifier.pdrop = 0.05  
-
-        """ Inference noise model. """
-        rpu_config.noise_model = PCMLikeNoiseModel()
+        # rpu_config.modifier.type = WeightModifierType.ADD_NORMAL  # Fwd/bwd weight noise.
+        # rpu_config.modifier.std_dev = 0.1
+        # rpu_config.modifier.pdrop = 0.05  
         
         return rpu_config
     
@@ -409,11 +405,7 @@ class InfModel(TrainModel):
         analog_model = convert_to_analog(self.model, pcm_config)
         
         # setting
-        """ program noise injection(?????) """
-        analog_model.program_analog_weights()
-
-        """ long-term effect (?????) """
-        analog_model.drift_analog_weights(t_inference= 100)
+        
 
         return analog_model
 
@@ -441,6 +433,6 @@ class InfModel(TrainModel):
             inference_accuracy_values[i] = test_accuracy
             
         print(
-                f"Test set accuracy (%) : \t mean: {inference_accuracy_values.mean() :.6f}, \t std: {inference_accuracy_values.std() :.6f}"
+                f"Test set accuracy (%) in s/w: \t mean: {inference_accuracy_values.mean() :.6f}, \t std: {inference_accuracy_values.std() :.6f}"
             )
             
