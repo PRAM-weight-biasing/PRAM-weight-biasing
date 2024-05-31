@@ -114,3 +114,6 @@ for t_inference in [0.0, 1.0, 20.0, 1000.0, 1e5]:
 
     #print(rpu_config.noise_model.g_converter.convert_to_conductances(model.get_weights()))
     print("")
+
+for layers in model.analog_tiles():
+    print(layers)
