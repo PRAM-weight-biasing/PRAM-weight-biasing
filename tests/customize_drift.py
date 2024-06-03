@@ -12,24 +12,47 @@ import matplotlib.pyplot as plt
 from aihwkit.simulator.presets.devices import PCMPresetDevice
 
 
-class SimpleNN(nn.Module):
-    def __init__(self):
-        super(SimpleNN, self).__init__()
-        self.fc1 = nn.Linear(1000, 1) 
-        
-    def forward(self, x):
-        x = self.fc1(x)
-        return x
-
 # Instantiate the model
-model = SimpleNN()
+model = nn.Linear(2000, 1)
 
 fixed_weights = torch.linspace(-2, 2, 2000)
-model.fc1.weight = Parameter(fixed_weights)
+model.weight = Parameter(fixed_weights)
 
 # Print the weights and bias to verify
-print("Weights:", model.fc1.weight)
-print("Bias:", model.fc1.bias)
+# print("Weights:", model.weight)
+# print("Bias:", model.bias)
 
 rpu_config = InferenceRPUConfig()
 rpu_config.device = PCMPresetDevice()
+
+analog_model = convert_to_analog(model, rpu_config)
+
+# get initial weights
+init_weights, _ = analog_model.get_weights()
+init_weights_vec = init_weights.reshape(-1)   # convert to (N,1) tensor
+
+# setting inference mode
+analog_model.eval() 
+t_inf = 1e6
+
+# get weights after t_inf
+analog_model.drift_analog_weights(t_inf)
+after_weights, _ = analog_model.get_weights()
+after_weights_vec = after_weights.reshape(-1)
+
+# delta weight = after = initial weight
+weight_change = after_weights - init_weights
+weight_change_vec = weight_change.reshape(-1)
+
+# weight change ratio = delta / initial
+weight_change_ratio = weight_change_vec / (init_weights_vec)
+
+# plotting
+plt.plot(init_weights_vec, weight_change_vec)
+plt.savefig('weight_disparity.png')
+plt.clf()
+
+plt.plot(init_weights_vec, weight_change_ratio)
+plt.savefig('weight_disparity_ratio.png')
+plt.clf()
+
