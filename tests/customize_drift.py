@@ -11,6 +11,8 @@ from aihwkit.inference import PCMLikeNoiseModel
 import matplotlib.pyplot as plt
 from aihwkit.simulator.presets.devices import PCMPresetDevice
 
+from customized_noise_pcm import TestNoiseModel
+
 
 # Instantiate the model
 model = nn.Linear(2000, 1)
@@ -23,7 +25,8 @@ model.weight = Parameter(fixed_weights)
 # print("Bias:", model.bias)
 
 rpu_config = InferenceRPUConfig()
-rpu_config.device = PCMPresetDevice()
+rpu_config.device = PCMPresetDevice()       # change to paired PCM devices (Gp-Gm)
+rpu_config.noise_model = TestNoiseModel()   # change to customized noise model
 
 analog_model = convert_to_analog(model, rpu_config)
 
@@ -49,10 +52,10 @@ weight_change_ratio = weight_change_vec / (init_weights_vec)
 
 # plotting
 plt.plot(init_weights_vec, weight_change_vec)
-plt.savefig('weight_disparity.png')
+plt.savefig('weight_disparity_test.png')
 plt.clf()
 
 plt.plot(init_weights_vec, weight_change_ratio)
-plt.savefig('weight_disparity_ratio.png')
+plt.savefig('weight_disparity_ratio_test.png')
 plt.clf()
 
