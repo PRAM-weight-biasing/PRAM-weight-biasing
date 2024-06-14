@@ -132,8 +132,11 @@ class TestNoiseModel(BaseNoiseModel):
         g_relative = clamp(torch_abs(g_target / self.g_max), min=_ZERO_CLIP)
 
         # gt should be normalized wrt g_max
-        # mu_drift = (-0.0155 * log(g_relative) + 0.0244).clamp(min=0.049, max=0.1)
-        mu_drift = (-0.1 * g_relative + 0.2)
+        mu_orig = (-0.0155 * log(g_relative) + 0.0244).clamp(min=0.049, max=0.1)
+        mu_linear = (-0.1 * g_relative + 0.2) 
+        mu_const = 0.1
+        mu_drift = mu_const
+        
         sig_drift = (-0.0125 * log(g_relative) - 0.0059).clamp(min=0.008, max=0.045)
         nu_drift = torch_abs(mu_drift + sig_drift * randn_like(g_relative)).clamp(min=0.0)
 

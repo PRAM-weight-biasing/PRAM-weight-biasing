@@ -52,10 +52,10 @@ weight_change_ratio = weight_change_vec / (init_weights_vec)
 
 # plotting
 plt.plot(init_weights_vec, weight_change_vec)
-plt.savefig('weight_disparity_test.png')
+plt.savefig('weight_disparity_const.png')
 plt.clf()
 
 plt.plot(init_weights_vec, weight_change_ratio)
-plt.savefig('weight_disparity_ratio_test.png')
+plt.savefig('weight_disparity_ratio_const.png')
 plt.clf()
 
