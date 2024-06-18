@@ -49,12 +49,14 @@ weight_change_vec = weight_change.reshape(-1)
 
 # weight change ratio = delta / initial
 weight_change_ratio = weight_change_vec / (init_weights_vec)
+
+# nu_drift
 nu_vec = -np.log(after_weights_vec/init_weights_vec) / np.log(t_inf+20 / 20)
 
 
 """ --- custom --- """
 
-mu = "linear3"
+mu = "log1"
 sig = 0
 
 """----------------"""
