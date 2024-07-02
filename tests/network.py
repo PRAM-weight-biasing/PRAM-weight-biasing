@@ -28,9 +28,10 @@ from aihwkit.simulator.configs import (
     WeightClipType,
     WeightModifierType,
 )
-from aihwkit.inference import PCMLikeNoiseModel, GlobalDriftCompensation
+# from aihwkit.inference import PCMLikeNoiseModel, GlobalDriftCompensation
 from aihwkit.nn.conversion import convert_to_analog
 from aihwkit.simulator.presets.devices import PCMPresetDevice
+from customized_noise_pcm import TestNoiseModel
 
 
 class simpleMLP(nn.Module):
@@ -391,7 +392,8 @@ class InfModel(TrainModel):
         
     def SetConfig(self) :
         rpu_config = InferenceRPUConfig()
-        rpu_config.device = PCMPresetDevice()
+        rpu_config.device = PCMPresetDevice()       # change to paired PCM devices (Gp-Gm)
+        rpu_config.noise_model = TestNoiseModel()   # change to customized noise model
         
         """ Weight modifier parameter """
         # rpu_config.modifier.type = WeightModifierType.ADD_NORMAL  # Fwd/bwd weight noise.

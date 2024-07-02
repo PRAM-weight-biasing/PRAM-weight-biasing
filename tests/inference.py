@@ -22,7 +22,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
 """ need to change """
-test_time = "Test_2024-05-30 15:29:27/retrain" 
+test_time = "Test_2024-07-02 17:11:46" 
 # ===========================================
 folder_path = dir_name + test_time
 model_name = 'best_model.pth'
@@ -42,7 +42,7 @@ test_dataloader = DataLoader(mnist_test, batch_size= batch_size, shuffle=False)
 n_reps = 10   # Number of inference repetitions.
 
 inf_model = InfModel(model_name, folder_path)
-inf_model.sw_EvalModel(test_dataloader, n_reps)
+# inf_model.sw_EvalModel(test_dataloader, n_reps)
 
 
 """ inference accuracy in hw (simulator) """

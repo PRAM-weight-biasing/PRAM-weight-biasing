@@ -15,9 +15,9 @@ from customized_noise_pcm import TestNoiseModel
 
 
 # Instantiate the model
-model = nn.Linear(2000, 1)
+model = nn.Linear(1000, 1)
 
-fixed_weights = torch.linspace(-2, 2, 2000)
+fixed_weights = torch.linspace(-1, 1, 1000)
 model.weight = Parameter(fixed_weights)
 
 # Print the weights and bias to verify
@@ -51,13 +51,13 @@ weight_change_vec = weight_change.reshape(-1)
 weight_change_ratio = weight_change_vec / (init_weights_vec)
 
 # nu_drift
-nu_vec = -np.log(after_weights_vec/init_weights_vec) / np.log(t_inf+20 / 20)
+nu_vec = -np.log(after_weights_vec/init_weights_vec+1e-20) / np.log(t_inf+20 / 20)
 
 
 """ --- custom --- """
 
-mu = "log1"
-sig = 0
+mu = "const"
+sig = "orig"
 
 """----------------"""
 
@@ -66,30 +66,31 @@ plt.plot(init_weights_vec, weight_change_vec)
 plt.xlabel('initial weight')
 plt.ylabel('weight change')
 plt.grid(True)
-plt.ylim([-1.1,1.1])
-plt.savefig(f'figure/weight_disparity_{mu}_{sig}.png')
+plt.ylim([-0.6,0.6])
+plt.savefig(f'figure2/weight_disparity_{mu}_{sig}.png')
 plt.clf()
 
 plt.plot(init_weights_vec, weight_change_ratio)
 plt.xlabel('initial weight')
 plt.ylabel('weight change ratio(= delta / initial)')
 plt.grid(True)
-plt.ylim([-1,1])
-plt.savefig(f'figure/weight_disparity_ratio_{mu}_{sig}.png')
+plt.ylim([-1,0.2])
+plt.savefig(f'figure2/weight_disparity_ratio_{mu}_{sig}.png')
 plt.clf()
 
 plt.plot(init_weights_vec, after_weights_vec)
 plt.xlabel('initial weight')
 plt.ylabel('after weight')
+plt.ylim([-1,1])
 plt.grid(True)
-plt.savefig(f'figure/after_vs_before_{mu}_{sig}.png')
+plt.savefig(f'figure2/after_vs_before_{mu}_{sig}.png')
 plt.clf()
 
 plt.plot(init_weights_vec, nu_vec)
 plt.xlabel('initial weight')
 plt.ylabel('nu_drift')
 plt.grid(True)
-plt.ylim([-0.2,0.2])
-plt.savefig(f'figure/nu_drift_{mu}_{sig}.png')
+# plt.ylim([0,0.2])
+plt.savefig(f'figure2/nu_drift_{mu}_{sig}.png')
 plt.clf()
 
