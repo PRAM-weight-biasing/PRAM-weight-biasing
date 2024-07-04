@@ -388,8 +388,8 @@ class InfModel(TrainModel):
         # super().__init__()
         self.model = model
         self.eval_fn = self.get_eval_function(mode)
-        # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.device = torch.device("cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # self.device = torch.device("cpu")
         
     def get_eval_function(self, mode):
         # Define a dictionary mapping modes to evaluation functions
