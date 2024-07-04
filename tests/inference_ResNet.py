@@ -37,7 +37,7 @@ testset = dsets.CIFAR10(root='dataset/',
                         download=True,
                         transform=transform)
 batch_size=100
-testloader = DataLoader(testset, batch_size=batch_size, shuffle=False)  # , num_workers=2
+testloader = DataLoader(testset, batch_size=batch_size, shuffle=True)  # , num_workers=2
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer',
            'dog', 'frog', 'horse', 'ship', 'truck')
@@ -45,7 +45,7 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer',
 
 
 """ inference accuracy in sw """
-n_reps = 3   # Number of inference repetitions.
+n_reps = 10   # Number of inference repetitions.
 
 inf_model = InfModel(model, "cifar10")
 inf_model.sw_EvalModel(testloader, n_reps)
@@ -58,6 +58,6 @@ analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model
 
 # Inference
 # t_inferences = [0.0, 3600.0, 86400.0, 1e7, 1e8, 1e9, 1e10, 1e12, 1e15]  # Times to perform infernece.
-t_inferences = [0.0, 3600.0, 86400.0]  
-n_reps = 3   # Number of inference repetitions.
+t_inferences = [0.0]  
+n_reps = 10   # Number of inference repetitions.
 inf_model.hw_EvalModel(analog_model, testloader, t_inferences, n_reps)

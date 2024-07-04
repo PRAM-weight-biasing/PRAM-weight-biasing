@@ -388,6 +388,8 @@ class InfModel(TrainModel):
         # super().__init__()
         self.model = model
         self.eval_fn = self.get_eval_function(mode)
+        # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cpu")
         
     def get_eval_function(self, mode):
         # Define a dictionary mapping modes to evaluation functions
@@ -423,9 +425,10 @@ class InfModel(TrainModel):
         return analog_model
 
     def hw_EvalModel(self, analog_model, test_loader, t_inferences: list, n_reps: int) :
-        inference_accuracy_values = torch.zeros((len(t_inferences), n_reps))
-
+        analog_model.to(self.device)
         analog_model.eval()
+        
+        inference_accuracy_values = torch.zeros((len(t_inferences), n_reps))
 
         for t_id, t in enumerate(t_inferences):
             for i in range(n_reps):
@@ -438,9 +441,11 @@ class InfModel(TrainModel):
                 )
             
     def sw_EvalModel(self, test_loader, n_reps: int) :
+        self.model.to(self.device)
+        self.model.eval()
+        
         inference_accuracy_values = torch.zeros(n_reps)
 
-        self.model.eval()
         for i in range(n_reps):
             _, test_accuracy = self.eval_fn(self.model, test_loader)
             inference_accuracy_values[i] = test_accuracy
@@ -450,7 +455,8 @@ class InfModel(TrainModel):
             )
             
     def eval_cifar10(self, model, test_loader) -> float:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # Move model to the correct device
+        model.to(self.device)
         
         total = 0
         correct = 0
@@ -459,7 +465,7 @@ class InfModel(TrainModel):
             model.eval()
             
             for data in test_loader:
-                images, labels = data[0].to(device), data[1].to(device)
+                images, labels = data[0].to(self.device), data[1].to(self.device)
                 outputs = model(images)
                 _, predicted = torch.max(outputs.data, 1)
                 total += labels.size(0)
@@ -468,104 +474,3 @@ class InfModel(TrainModel):
             test_accuracy = 100* (correct / total)
                 
             return total, test_accuracy
-        
-        
-        
-        
-class __bu_InfModel(TrainModel):
-    def __init__(self, mode: str, model_name: str, folder_path: str=""):
-        # super().__init__()
-        self.model = self.load_model
-        self.eval_fn = self.get_eval_function(mode)
-        
-        
-    def load_model(self, model_name, folder_path):
-        # description
-        if folder_path != "" :
-            self.model = torch.load(f'{self.folder_path}/{model_name}')
-        else:
-            self.model = model_name
-       
-        return  self.model
-        
-    def get_eval_function(self, mode):
-        # Define a dictionary mapping modes to evaluation functions
-        eval_function_map = {
-            "mnist": self.eval_mnist_mlp,
-            "cifar10": self.eval_cifar10
-        }
-
-        if mode not in eval_function_map:
-            raise ValueError(f"Invalid mode: {mode}. Supported modes are: {list(eval_function_map.keys())}")
-
-        return eval_function_map[mode]
-        
-        
-    def SetConfig(self) :
-        rpu_config = InferenceRPUConfig()
-        rpu_config.device = PCMPresetDevice()       # change to paired PCM devices (Gp-Gm)
-        rpu_config.noise_model = TestNoiseModel()   # change to customized noise model
-        
-        """ Weight modifier parameter """
-        # rpu_config.modifier.type = WeightModifierType.ADD_NORMAL  # Fwd/bwd weight noise.
-        # rpu_config.modifier.std_dev = 0.1
-        # rpu_config.modifier.pdrop = 0.05  
-        
-        return rpu_config
-    
-    def ConvertModel(self):
-        pcm_config = self.SetConfig()
-        analog_model = convert_to_analog(self.model, pcm_config)
-        
-        # setting
-        
-        return analog_model
-
-    def hw_EvalModel(self, analog_model, test_loader, t_inferences: list, n_reps: int) :
-        inference_accuracy_values = torch.zeros((len(t_inferences), n_reps))
-
-        analog_model.eval()
-
-        for t_id, t in enumerate(t_inferences):
-            for i in range(n_reps):
-                analog_model.drift_analog_weights(t)
-                test_loss, test_accuracy = self.eval_fn(analog_model, test_loader)
-                inference_accuracy_values[t_id, i] = test_accuracy
-                
-            print(
-                    f"Test set accuracy (%) at t={t}s: \t mean: {inference_accuracy_values[t_id].mean() :.6f}, \t std: {inference_accuracy_values[t_id].std() :.6f}"
-                )
-            
-    def sw_EvalModel(self, test_loader, n_reps: int) :
-        inference_accuracy_values = torch.zeros(n_reps)
-
-        self.model.eval()
-        for i in range(n_reps):
-            test_loss, test_accuracy = self.eval_fn(self.model, test_loader)
-            inference_accuracy_values[i] = test_accuracy
-            
-        print(
-                f"Test set accuracy (%) in s/w: \t mean: {inference_accuracy_values.mean() :.6f}, \t std: {inference_accuracy_values.std() :.6f}"
-            )
-            
-    def eval_cifar10(self, model, test_loader) -> float:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        
-        test_loss = 0
-        total = 0
-        correct = 0
-        
-        with torch.no_grad():
-            model.eval()
-            
-            for data in test_loader:
-                images, labels = data[0].to(device), data[1].to(device)
-                outputs = model(images)
-                _, predicted = torch.max(outputs.data, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-                        
-            test_loss /= len(test_loader)
-            test_accuracy = 100* (correct / total)
-                
-            return test_loss.item(), test_accuracy
