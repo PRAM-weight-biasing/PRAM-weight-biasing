@@ -474,3 +474,27 @@ class InfModel(TrainModel):
             test_accuracy = 100* (correct / total)
                 
             return total, test_accuracy
+        
+    def semitrain_cifar10(self, model, test_loader) -> float:
+        # Move model to the correct device
+        model.to(self.device)
+        
+        total = 0
+        correct = 0
+        
+        model.train()
+        
+        for data in test_loader:
+            images, labels = data[0].to(self.device), data[1].to(self.device)
+            outputs = model(images)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+                    
+        test_accuracy = 100* (correct / total)
+        
+        print(
+                f"train mode accuracy (%) : \t mean: {test_accuracy :.6f}"
+            )
+            
+        # return total, test_accuracy
