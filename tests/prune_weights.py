@@ -15,7 +15,7 @@ torch.manual_seed(777)
 dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
 """ need to change """
-test_time = "Test_2024-05-18 14:24:10" 
+test_time = "Test_2024-07-02 17:11:46" 
 # ===========================================
 folder_path = dir_name + test_time
 model_name = 'best_model.pth'

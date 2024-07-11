@@ -122,12 +122,14 @@ class TrainModel():
 
     def eval_mnist_mlp(self, model, test_loader) -> float:
         model.eval()
+        
         with torch.no_grad():
             test_loss = 0
             total = 0
             correct = 0
             for inputs, targets in test_loader:
-                inputs = inputs.view(-1, 28*28)  # change size to (batch_size, 784)
+                inputs = inputs.view(-1, 28*28).to(self.device)  # change size to (batch_size, 784)
+                targets = targets.to(self.device)
                 outputs = model(inputs)
                 test_loss += nn.CrossEntropyLoss()(outputs, targets)
 
