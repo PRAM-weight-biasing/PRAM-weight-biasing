@@ -11,7 +11,7 @@ from aihwkit.inference import PCMLikeNoiseModel
 import matplotlib.pyplot as plt
 from aihwkit.simulator.presets.devices import PCMPresetDevice
 
-from customized_noise_pcm import TestNoiseModel
+from aihwkit_test.customized_noise_pcm import TestNoiseModel
 
 
 # Instantiate the model
@@ -56,8 +56,8 @@ nu_vec = -np.log(after_weights_vec/init_weights_vec+1e-20) / np.log(t_inf+20 / 2
 
 """ --- custom --- """
 
-mu = "const"
-sig = "orig"
+mu = "t"
+sig = "t"
 
 """----------------"""
 

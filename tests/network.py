@@ -31,7 +31,7 @@ from aihwkit.simulator.configs import (
 # from aihwkit.inference import PCMLikeNoiseModel, GlobalDriftCompensation
 from aihwkit.nn.conversion import convert_to_analog
 from aihwkit.simulator.presets.devices import PCMPresetDevice
-from customized_noise_pcm import TestNoiseModel
+from aihwkit_test.customized_noise_pcm import TestNoiseModel
 
 
 class simpleMLP(nn.Module):
