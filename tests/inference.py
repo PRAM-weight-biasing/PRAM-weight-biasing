@@ -1,6 +1,8 @@
 import torch
 import random
 import os
+import time
+import datetime
 
 from torch.utils.data import DataLoader
 import torchvision.datasets as dsets
@@ -18,6 +20,8 @@ from network import InfModel
 # random.seed(777)
 # torch.manual_seed(777)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+start = time.time()
+
 
 dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
@@ -42,8 +46,8 @@ test_dataloader = DataLoader(mnist_test, batch_size= batch_size, shuffle=False)
 """ inference accuracy in sw """
 n_reps = 10   # Number of inference repetitions.
 
-inf_model = InfModel(model, "mnist")
-inf_model.sw_EvalModel(test_dataloader, n_reps)
+# inf_model = InfModel(model, "mnist")
+# inf_model.sw_EvalModel(test_dataloader, n_reps)
 
 
 """ inference accuracy in hw (simulator) """
@@ -55,3 +59,11 @@ analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model
 t_inferences = [0.0, 3600.0, 86400.0, 1e7, 1e8, 1e9, 1e10, 1e12, 1e15]  # Times to perform infernece.
 n_reps = 10   # Number of inference repetitions.
 inf_model.hw_EvalModel(analog_model, test_dataloader, t_inferences, n_reps)
+
+
+# ------------------------------------------------------------------
+# measure run-time
+sec = time.time()-start
+times = str(datetime.timedelta(seconds=sec)) 
+short = times.split(".")[0]   # until sec.
+print(f"\nruntime : {short} sec\n")

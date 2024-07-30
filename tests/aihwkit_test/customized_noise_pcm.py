@@ -136,13 +136,14 @@ class TestNoiseModel(BaseNoiseModel):
         # gt should be normalized wrt g_max
         """ mu_drift """
         mu_orig = (-0.0155 * log(g_relative) + 0.0244).clamp(min=0.049, max=0.1)
-        mu_log = (-0.0155 * log(g_relative) + 0.0244).clamp(min=_ZERO_CLIP) 
+        mu_log = (-0.0155 * log(g_relative) + 0.0244).clamp(min=0.01) 
         mu_linear = (-0.05 * g_relative + 0.1).clamp(min=_ZERO_CLIP) 
         mu_const = 0.07
-        mu_const_large = 0.1
-        mu_const_small = 0.05
+        mu_const_010 = 0.1
+        mu_const_005 = 0.05
+        mu_const_001 = 0.01
         mu_zero = 0
-        mu_drift = mu_linear   # final
+        mu_drift = mu_const_001 # final
         
         """ sig_drift """
         sig_orig = (-0.0125 * log(g_relative) - 0.0059).clamp(min=0.008, max=0.045)

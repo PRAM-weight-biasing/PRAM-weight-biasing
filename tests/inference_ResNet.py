@@ -62,8 +62,8 @@ inf_model = InfModel(model, "cifar10")
 analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model using aihwkit
 
 # Inference
-t_inferences = [0.0, 3600.0, 86400.0, 1e7, 1e8, 1e9, 1e10, 1e12, 1e15]  # Times to perform infernece.
-# t_inferences = [0.0]  
+t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9, 1e10, 1e12, 1e15]  # Times to perform infernece.
+# t_inferences = [10.0, 100.0, 1000.0, 10000.0]   
 n_reps = 10  # Number of inference repetitions.
 
 """ for test"""
@@ -79,4 +79,4 @@ inf_model.hw_EvalModel(analog_model, testloader, t_inferences, n_reps)
 sec = time.time()-start
 times = str(datetime.timedelta(seconds=sec)) 
 short = times.split(".")[0]   # until sec.
-print(f"\nruntime : {short} sec")
+print(f"\nruntime : {short} sec\n")
