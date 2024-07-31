@@ -31,6 +31,7 @@ from aihwkit.simulator.configs import (
 # from aihwkit.inference import PCMLikeNoiseModel, GlobalDriftCompensation
 from aihwkit.nn.conversion import convert_to_analog
 from aihwkit.simulator.presets.devices import PCMPresetDevice
+from aihwkit.simulator.presets.compounds import PCMPresetUnitCell
 from aihwkit_test.customized_noise_pcm import TestNoiseModel
 
 
@@ -408,12 +409,13 @@ class InfModel(TrainModel):
         
     def SetConfig(self) :
         rpu_config = InferenceRPUConfig()
-        rpu_config.device = PCMPresetDevice()       # change to paired PCM devices (Gp-Gm)
+        # rpu_config.device = PCMPresetDevice()       # change to paired PCM devices (Gp-Gm)
+        rpu_config.device = PCMPresetUnitCell() 
         rpu_config.noise_model = TestNoiseModel()   # change to customized noise model
-        rpu_config.drift_compensation = None
+        # rpu_config.drift_compensation = None
         
         """ test 0723 """
-        # rpu_config.forward.is_perfect=True  # Resnet18 conversion 문제는 해결되는데, 이렇게 해도 되는지 확인해 봐야 함
+        rpu_config.forward.is_perfect=True  # Resnet18 conversion 문제는 해결되는데, 이렇게 해도 되는지 확인해 봐야 함
         
         """ Weight modifier parameter """
         # rpu_config.modifier.type = WeightModifierType.ADD_NORMAL  # Fwd/bwd weight noise.
