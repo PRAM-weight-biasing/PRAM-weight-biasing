@@ -5,6 +5,8 @@ import os
 # import customized files
 from network import PruneModel, TrainModel, Vis_Model
 
+from PyTorch_CIFAR10.cifar10_models.resnet import resnet18
+
 ### =============================================================
 
 
@@ -19,6 +21,11 @@ test_time = "Test_2024-08-01 11:52:18"
 # ===========================================
 folder_path = dir_name + test_time
 model_name = 'best_model.pth'
+
+### =============================================================
+# model_name = resnet18(pretrained=True)
+# folder_path = dir_name + 'resnet_pruning_0801'
+### =============================================================
 
 prune_percentage = 0.6
 
