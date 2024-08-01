@@ -412,7 +412,7 @@ class InfModel(TrainModel):
         # rpu_config.device = PCMPresetDevice()       # change to paired PCM devices (Gp-Gm)
         rpu_config.device = PCMPresetUnitCell() 
         rpu_config.noise_model = TestNoiseModel()   # change to customized noise model
-        # rpu_config.drift_compensation = None
+        rpu_config.drift_compensation = None
         
         """ test 0723 """
         rpu_config.forward.is_perfect=True  # Resnet18 conversion 문제는 해결되는데, 이렇게 해도 되는지 확인해 봐야 함
