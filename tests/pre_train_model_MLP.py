@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import DataLoader
 import torchvision.datasets as dsets
 from torchvision.transforms import ToTensor
+import torchvision.transforms as transforms
 import random
 
 # import customized files
@@ -18,16 +19,33 @@ folder_path = myModule.MakeFolder(0)
 
 
 """ Data pre-processing """
-# Load data - MNIST
+# Load data - MNIST (w/ normalize)
+transform = transforms.Compose([
+            transforms.ToTensor(),   # transform : convert image to tensor. Normalized to 0~1
+            transforms.Normalize((0.1307,), (0.3081,))
+])
+
 mnist_train = dsets.MNIST(root='MNIST_data/',
                           train=True,
-                          transform=ToTensor(),  # transform : convert image to tensor. Normalized to 0~1
+                          transform=transform,  
                           download=True)
 
 mnist_test = dsets.MNIST(root='MNIST_data/',
                          train=False,
-                         transform=ToTensor(),
+                         transform=transform,
                          download=True)
+
+# No normalize
+# mnist_train = dsets.MNIST(root='MNIST_data/',
+#                           train=True,
+#                           transform=ToTensor(),  # transform : convert image to tensor. Normalized to 0~1
+#                           download=True)
+
+# mnist_test = dsets.MNIST(root='MNIST_data/',
+#                          train=False,
+#                          transform=ToTensor(),
+#                          download=True)
+
 
 # train_test dataloader
 batch_size = 100

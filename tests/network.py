@@ -51,8 +51,9 @@ class TrainModel():
     def __init__(self, train_dataloader, test_dataloader, train_model):
         self.train_dataloader = train_dataloader
         self.test_dataloader = test_dataloader
-        self.model = train_model
-
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = train_model.to(self.device)
+        
     def MNIST_MLP(self, learning_rate: float, num_epochs: int, folder_path) -> None:
                         
         # Define the cost & optimizer
@@ -80,7 +81,8 @@ class TrainModel():
             total_train_loss = 0
 
             for X, Y in self.train_dataloader:
-                X = X.view(-1, 28 * 28)  # change size to (batch_size, 784)
+                X = X.view(-1, 28 * 28).to(self.device)  # change size to (batch_size, 784)
+                Y = Y.to(self.device)
                 y_pred = self.model(X)
                 loss = loss_fn(y_pred, Y)
                 total_train_loss += loss.item()
@@ -169,7 +171,8 @@ class TrainModel():
             total_train_loss = 0
 
             for X, Y in self.train_dataloader:
-                X = X.view(-1, 28 * 28)  # change size to (batch_size, 784)
+                X = X.view(-1, 28 * 28).to(self.device)  # change size to (batch_size, 784)
+                Y = Y.to(self.device)
                 y_pred = self.model(X)
                 loss = loss_fn(y_pred, Y)
                 total_train_loss += loss.item()
@@ -274,7 +277,7 @@ class Vis_Model():
 
         for name, param in self.model.named_parameters():
             if 'weight' in name:
-                all_weights.extend(param.detach().numpy().flatten())
+                all_weights.extend(param.detach().cpu().numpy().flatten())
                 
         plt.figure(figsize=(8,6))
         plt.hist(all_weights, bins=200, alpha=1)
@@ -361,7 +364,7 @@ class PruneModel():
         all_weights = []
         for name, param in weights.named_parameters():
             if 'weight' in name:
-                all_weights.extend(param.detach().numpy().flatten())
+                all_weights.extend(param.detach().cpu().numpy().flatten())
             
         plt.hist(all_weights, bins=200, alpha=1)
         plt.title('Weight Distribution')

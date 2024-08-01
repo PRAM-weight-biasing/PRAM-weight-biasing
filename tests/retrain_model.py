@@ -5,6 +5,7 @@ import os
 from torch.utils.data import DataLoader
 import torchvision.datasets as dsets
 from torchvision.transforms import ToTensor
+import torchvision.transforms as transforms
 
 # import customized files
 from network import PruneModel, TrainModel, Vis_Model
@@ -18,7 +19,7 @@ torch.manual_seed(777)
 dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
 """ need to change """
-test_time = "Test_2024-07-02 17:11:46" 
+test_time = "Test_2024-08-01 11:52:18" 
 # ===========================================
 folder_path = dir_name + test_time
 model_name = 'global_pruned_model.pth'
@@ -40,15 +41,20 @@ for name, param in pruned_model.named_parameters():
     if name in masks:
         param.register_hook(lambda grad, mask=masks[name]: grad * mask)
   
-# Load data - MNIST
+# Load data - MNIST (w/ normalize)
+transform = transforms.Compose([
+            transforms.ToTensor(),   # transform : convert image to tensor. Normalized to 0~1
+            transforms.Normalize((0.1307,), (0.3081,))
+])
+
 mnist_train = dsets.MNIST(root='MNIST_data/',
                           train=True,
-                          transform=ToTensor(),  # transform : convert image to tensor. Normalized to 0~1
+                          transform=transform,  
                           download=True)
 
 mnist_test = dsets.MNIST(root='MNIST_data/',
                          train=False,
-                         transform=ToTensor(),
+                         transform=transform,
                          download=True)
 
 # train_test dataloader

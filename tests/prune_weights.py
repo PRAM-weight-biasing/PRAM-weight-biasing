@@ -9,13 +9,13 @@ from network import PruneModel, TrainModel, Vis_Model
 
 
 # Setting
-random.seed(777)
-torch.manual_seed(777)
+# random.seed(777)
+# torch.manual_seed(777)
 
 dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
 """ need to change """
-test_time = "Test_2024-07-02 17:11:46" 
+test_time = "Test_2024-08-01 11:52:18" 
 # ===========================================
 folder_path = dir_name + test_time
 model_name = 'best_model.pth'
