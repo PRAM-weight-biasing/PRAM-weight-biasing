@@ -27,10 +27,10 @@ start = time.time()
 dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
 """ need to change """
-test_time = "Test_2024-08-01 11:52:18/retrain" 
+test_time = "Test_2024-08-01 11:52:18" 
 # ===========================================
 folder_path = dir_name + test_time
-model_name = 'best_model.pth'
+model_name = 'global_pruned_model.pth'
 
 model = torch.load(f'{folder_path}/{model_name}')
 
