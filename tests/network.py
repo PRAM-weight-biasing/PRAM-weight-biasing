@@ -30,7 +30,7 @@ from aihwkit.simulator.configs import (
 )
 # from aihwkit.inference import PCMLikeNoiseModel, GlobalDriftCompensation
 from aihwkit.nn.conversion import convert_to_analog
-from aihwkit.simulator.presets.devices import PCMPresetDevice
+from aihwkit.simulator.presets import PCMPresetDevice, PCMPresetUnitCell
 from aihwkit_test.customized_noise_pcm import TestNoiseModel
 
 
@@ -411,8 +411,10 @@ class InfModel(TrainModel):
         
     def SetConfig(self) :
         rpu_config = InferenceRPUConfig()
-        rpu_config.device = PCMPresetDevice()       # change to paired PCM devices (Gp-Gm)
+        rpu_config.device = PCMPresetUnitCell()      # change to paired PCM devices (Gp-Gm)
         rpu_config.noise_model = TestNoiseModel()   # change to customized noise model
+        rpu_config.drift_compensation = None
+        rpu_config.forward.is_perfect=True
         
         """ Weight modifier parameter """
         # rpu_config.modifier.type = WeightModifierType.ADD_NORMAL  # Fwd/bwd weight noise.
