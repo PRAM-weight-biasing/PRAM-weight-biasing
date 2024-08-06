@@ -299,7 +299,14 @@ class PruneModel():
         self.folder_path = folder_path
         self.premodel = torch.load(f'{self.folder_path}/{model_name}')
         self.prune_percent = prune_percent
+        self.model_name = model_name
 
+    def load_model(self):
+        try:     # for model 
+            self.premodel = torch.load(f'{self.folder_path}/{self.model_name}')
+        except:  # for imported model from web
+            self.premodel = self.model_name
+        
 
     def local_pruning(self) -> None :
         # Apply pruning to each linear layer
