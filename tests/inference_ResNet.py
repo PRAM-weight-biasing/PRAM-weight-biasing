@@ -29,7 +29,19 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 start = time.time()
 
 # Pretrained model
-model = resnet18(pretrained=True)
+# model = resnet18(pretrained=True)
+
+# modified model
+dir_name = os.getcwd() + '/TestRun/'
+# ===========================================
+""" need to change """
+test_time = "Test_2024-08-09_prune_0.6" 
+# ===========================================
+folder_path = dir_name + test_time
+model_name = 'global_pruned_model.pth'
+
+model = torch.load(f'{folder_path}/{model_name}')
+
 
 # test dataset
 transform = transforms.Compose([
@@ -52,8 +64,8 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer',
 """ inference accuracy in sw """
 n_reps = 10   # Number of inference repetitions.
 
-inf_model = InfModel(model, "cifar10")
-inf_model.sw_EvalModel(testloader, n_reps)
+# inf_model = InfModel(model, "cifar10")
+# inf_model.sw_EvalModel(testloader, n_reps)
 
 
 """ inference accuracy in hw (simulator) """

@@ -295,41 +295,47 @@ class Vis_Model():
         
 
 class PruneModel():
-    def __init__(self, prune_percent: float, model_name: str, folder_path: str):
+    def __init__(self, model_name: str, folder_path: str):
         self.folder_path = folder_path
-        self.premodel = torch.load(f'{self.folder_path}/{model_name}')
-        self.prune_percent = prune_percent
         self.model_name = model_name
+        
+        self.premodel = self.load_model()
 
     def load_model(self):
         try:     # for model 
-            self.premodel = torch.load(f'{self.folder_path}/{self.model_name}')
+            premodel = torch.load(f'{self.folder_path}/{self.model_name}')
         except:  # for imported model from web
-            self.premodel = self.model_name
+            premodel = self.model_name
         
+        return premodel
 
-    def local_pruning(self) -> None :
+    def apply_local_pruning(self, amount: float) -> None :
         # Apply pruning to each linear layer
         for name, module in self.premodel.named_modules():
             if isinstance(module, nn.Linear):
-                prune.l1_unstructured(module, 'weight', amount= self.prune_percent)
+                prune.l1_unstructured(module, 'weight', amount= amount)
                 prune.remove(module, 'weight')  # fix pruned weights
         # Save the model
         torch.save(self.premodel, f'{self.folder_path}/local_pruned_model.pth')
 
 
-    def global_pruning(self) -> None :
+    def apply_global_pruning(self, amount: float) -> None :
         # Apply pruning to all parameters
-        parameters_to_prune = (
-            (self.premodel.fc1, 'weight'),
-            (self.premodel.fc2, 'weight'),
-            (self.premodel.fc3, 'weight'),
-        )
+        # parameters_to_prune = (
+        #     (self.premodel.fc1, 'weight'),
+        #     (self.premodel.fc2, 'weight'),
+        #     (self.premodel.fc3, 'weight'),
+        # )
+        
+        parameters_to_prune = []
+        for name, module in self.premodel.named_modules():
+            if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
+                parameters_to_prune.append((module, 'weight'))
 
-        prune.global_unstructured(parameters_to_prune, pruning_method=prune.L1Unstructured, amount= self.prune_percent)
+        prune.global_unstructured(parameters_to_prune, pruning_method=prune.L1Unstructured, amount= amount)
 
         for name, module in self.premodel.named_modules():
-            if isinstance(module, nn.Linear):
+            if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
                 prune.remove(module, 'weight') # fix pruned weights
 
         # Save the model
