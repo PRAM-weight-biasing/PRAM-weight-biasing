@@ -75,6 +75,7 @@ class TestNoiseModel(BaseNoiseModel):
         prog_coeff: Optional[List[float]] = None,
         g_converter: Optional[BaseConductanceConverter] = None,
         g_max: Optional[float] = None,
+        g_min: Optional[float] = None,
         t_read: float = 250.0e-9,
         t_0: float = 20.0,
         # prog_noise_scale: float = 1.0,
@@ -84,7 +85,7 @@ class TestNoiseModel(BaseNoiseModel):
         drift_scale: float = 1.0,
         prog_coeff_g_max_reference: Optional[float] = None,
     ):
-        g_converter = deepcopy(g_converter) or SinglePairConductanceConverter(g_max=g_max)
+        g_converter = deepcopy(g_converter) or SinglePairConductanceConverter(g_max=g_max, g_min=g_min)
         super().__init__(g_converter)
 
         self.g_max = getattr(self.g_converter, "g_max", g_max)
@@ -143,7 +144,7 @@ class TestNoiseModel(BaseNoiseModel):
         mu_const_005 = 0.05
         mu_const_001 = 0.01
         mu_zero = 0
-        mu_drift = mu_log   # final
+        mu_drift = mu_const_001   # final
         
         """ sig_drift """
         sig_orig = (-0.0125 * log(g_relative) - 0.0059).clamp(min=0.008, max=0.045)

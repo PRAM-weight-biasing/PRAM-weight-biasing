@@ -28,19 +28,22 @@ from network import InfModel
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 start = time.time()
 
-# Pretrained model
-# model = resnet18(pretrained=True)
+import_model = True  # use pretrained model or not
 
-# modified model
-dir_name = os.getcwd() + '/TestRun/'
-# ===========================================
-""" need to change """
-test_time = "Test_2024-08-09_prune_0.6" 
-# ===========================================
-folder_path = dir_name + test_time
-model_name = 'global_pruned_model.pth'
+if import_model==1:
+    # Pretrained model
+    model = resnet18(pretrained=True)
+else:
+    # modified model
+    dir_name = os.getcwd() + '/TestRun/'
+    # ===========================================
+    """ need to change """
+    test_time = "Test_2024-08-09_prune_0.6" 
+    # ===========================================
+    folder_path = dir_name + test_time
+    model_name = 'global_pruned_model.pth'
 
-model = torch.load(f'{folder_path}/{model_name}')
+    model = torch.load(f'{folder_path}/{model_name}')
 
 
 # test dataset
