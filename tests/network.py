@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 from datetime import datetime
+from typing import Optional
 
 # torch related methods
 import torch
@@ -402,12 +403,22 @@ class PruneModel():
                 
                 
 class InfModel(TrainModel):
-    def __init__(self, model, mode: str):
+    def __init__(self, model, mode: str, g_list: Optional[list] = None):
         # super().__init__()
         self.model = model
         self.eval_fn = self.get_eval_function(mode)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # self.device = torch.device("cpu")
+        
+        g_list = [None, None] if g_list is None else g_list
+        self.gmax = g_list[0]
+        self.gmin = g_list[1]
+        
+    # def __init__(self, model, mode: str):
+    #     # super().__init__()
+    #     self.model = model
+    #     self.eval_fn = self.get_eval_function(mode)
+    #     self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #     # self.device = torch.device("cpu")
         
     def get_eval_function(self, mode):
         # Define a dictionary mapping modes to evaluation functions
@@ -426,9 +437,11 @@ class InfModel(TrainModel):
         rpu_config = InferenceRPUConfig()
         rpu_config.device = PCMPresetUnitCell()      # change to paired PCM devices (Gp-Gm)
         # rpu_config.noise_model = TestNoiseModel()   # change to customized noise model
-        rpu_config.noise_model = TestNoiseModel(g_max=1000000.0, g_min=100000.0)   # change on/off ratio
+        """ test """
+        rpu_config.noise_model = TestNoiseModel(g_max=self.gmax, g_min=self.gmin)   # change on/off ratio
+        """ ----- """
         rpu_config.drift_compensation = None
-        rpu_config.forward.is_perfect=True
+        # rpu_config.forward.is_perfect=True
         
         """ Weight modifier parameter """
         # rpu_config.modifier.type = WeightModifierType.ADD_NORMAL  # Fwd/bwd weight noise.

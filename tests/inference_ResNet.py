@@ -28,7 +28,7 @@ from network import InfModel
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 start = time.time()
 
-import_model = True  # use pretrained model or not
+import_model = False  # use pretrained model or not
 
 if import_model==1:
     # Pretrained model
@@ -67,8 +67,8 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer',
 """ inference accuracy in sw """
 n_reps = 10   # Number of inference repetitions.
 
-# inf_model = InfModel(model, "cifar10")
-# inf_model.sw_EvalModel(testloader, n_reps)
+inf_model = InfModel(model, "cifar10")
+inf_model.sw_EvalModel(testloader, n_reps)
 
 
 """ inference accuracy in hw (simulator) """
@@ -82,6 +82,20 @@ n_reps = 10  # Number of inference repetitions.
 
 inf_model.hw_EvalModel(analog_model, testloader, t_inferences, n_reps)
 
+""" test 0820 """
+# g_minmax_list = [[25.0, 5.0], [25.0, 0.0]]
+# for g_list in g_minmax_list:
+#     print(f"-------\ng_max,min = {g_list}\n-------")
+    
+#     inf_model = InfModel(model=model, mode="cifar10", g_list=g_list)
+#     analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model using aihwkit
+
+#     # Inference
+#     t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9, 1e10, 1e12, 1e15]  
+#     n_reps = 10  # Number of inference repetitions.
+
+#     inf_model.hw_EvalModel(analog_model, testloader, t_inferences, n_reps)
+""" -------- """
 
 
 # ------------------------------------------------------------------
