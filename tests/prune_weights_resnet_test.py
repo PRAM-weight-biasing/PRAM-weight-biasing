@@ -12,8 +12,6 @@ from PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 
 
 # Setting
-# random.seed(777)
-# torch.manual_seed(777)
 
 # dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
@@ -25,14 +23,15 @@ from PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 
 ### =============================================================
 model_name = resnet18(pretrained=True)
-folder_path = myModule.MakeFolder(0)
-### =============================================================
 
 prune_percentage = 0.6
+folder_path = myModule.MakeFolder(f'_prune{prune_percentage}')
+### =============================================================
+
 
 # local pruning : prune each layer
-# PruneTest1 = PruneModel(prune_percentage, model_name, folder_path)
-# PruneTest1.apply_local_pruning()
+PruneTest1 = PruneModel(model_name, folder_path)
+PruneTest1.apply_local_pruning(prune_percentage)
 # sparsity_list1 = PruneTest1.cal_local_sparsity('local_pruned_model.pth')
 # sparsity_all1 = PruneTest1.cal_global_sparsity('local_pruned_model.pth')
 # PruneTest1.Vis_local_w()

@@ -313,7 +313,7 @@ class PruneModel():
     def apply_local_pruning(self, amount: float) -> None :
         # Apply pruning to each linear layer
         for name, module in self.premodel.named_modules():
-            if isinstance(module, nn.Linear):
+            if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
                 prune.l1_unstructured(module, 'weight', amount= amount)
                 prune.remove(module, 'weight')  # fix pruned weights
         # Save the model
@@ -321,13 +321,7 @@ class PruneModel():
 
 
     def apply_global_pruning(self, amount: float) -> None :
-        # Apply pruning to all parameters
-        # parameters_to_prune = (
-        #     (self.premodel.fc1, 'weight'),
-        #     (self.premodel.fc2, 'weight'),
-        #     (self.premodel.fc3, 'weight'),
-        # )
-        
+        # Apply pruning to all parameters       
         parameters_to_prune = []
         for name, module in self.premodel.named_modules():
             if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
@@ -353,7 +347,7 @@ class PruneModel():
         # Check sparsity in each layer
         sparsity_list = []
         for name, module in pruned_model.named_modules():
-            if isinstance(module, nn.Linear):
+            if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
                 sparsity = self.cal_sparsity(module.weight)
                 sparsity_list.append(sparsity)
                 print(f"{name} sparsity: {sparsity:.2%}")

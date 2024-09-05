@@ -1,14 +1,17 @@
 import os
 from datetime import datetime
+from typing import Optional
 
 
-def MakeFolder(x) -> str:  # create new directory
+def MakeFolder(test: Optional[str]) :  # create new directory
     now = datetime.now()
-    runtime = now.strftime('%Y-%m-%d %H:%M:%S')
+    runtime = now.strftime('%Y-%m-%d_%H-%M')
     folder_name = "Test_"+ runtime
     dir_name = os.getcwd() + '/TestRun/'
 
-    folder_path = dir_name + folder_name
+    test = None if test is None else test
+    
+    folder_path = dir_name + folder_name + test
     os.makedirs(folder_path, exist_ok=True)
 
     return folder_path
