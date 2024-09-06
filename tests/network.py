@@ -343,10 +343,11 @@ class PruneModel():
         return zero_params / total_params  # Sparsity ratio
 
     def cal_local_sparsity(self, pruned_model: str) -> list:
-        pruned_model = torch.load(f'{self.folder_path}/{pruned_model}')
+        model = torch.load(f'{self.folder_path}/{pruned_model}')
         # Check sparsity in each layer
         sparsity_list = []
-        for name, module in pruned_model.named_modules():
+        print(f'\n--- Local sparsity of {str(pruned_model)} ---')
+        for name, module in model.named_modules():
             if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
                 sparsity = self.cal_sparsity(module.weight)
                 sparsity_list.append(sparsity)
@@ -355,16 +356,17 @@ class PruneModel():
         return sparsity_list
 
     def cal_global_sparsity(self, pruned_model: str) -> float:
-        pruned_model = torch.load(f'{self.folder_path}/{pruned_model}')
+        model = torch.load(f'{self.folder_path}/{pruned_model}')
         total_params = 0
         zero_params = 0
         # Iterate over all modules and sum total and zeroed-out parameters
-        for name, module in pruned_model.named_modules():
-            if isinstance(module, nn.Linear):
+        for name, module in model.named_modules():
+            if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
                 total_params += module.weight.numel()
                 zero_params += torch.sum(module.weight == 0).item()
         global_sparsity = zero_params / total_params  # Sparsity ratio
 
+        print(f'\n--- Global sparsity of {str(pruned_model)} ---')
         print(f"Global Sparsity: {global_sparsity:.2%}")
         return global_sparsity
     
