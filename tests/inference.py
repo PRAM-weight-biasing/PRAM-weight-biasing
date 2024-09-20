@@ -3,6 +3,7 @@ import random
 import os
 import time
 import datetime
+import numpy as np
 
 from torch.utils.data import DataLoader
 import torchvision.datasets as dsets
@@ -13,14 +14,13 @@ from aihwkit.nn.conversion import convert_to_analog
 
 # import customized files
 from network import InfModel
+import myModule
 
 ### =============================================================
 
-
 # Setting
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+myModule.seed_everything()
 start = time.time()
-
 
 dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
@@ -48,10 +48,10 @@ test_dataloader = DataLoader(mnist_test, batch_size= batch_size, shuffle=False)
 
 
 """ inference accuracy in sw """
-n_reps = 10   # Number of inference repetitions.
+# n_reps = 1   # Number of inference repetitions.
 
-inf_model = InfModel(model, "mnist")
-inf_model.sw_EvalModel(test_dataloader, n_reps)
+# inf_model = InfModel(model, "mnist")
+# inf_model.sw_EvalModel(test_dataloader, n_reps)
 
 
 """ inference accuracy in hw (simulator) """
@@ -63,23 +63,26 @@ analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model
 t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9, 1e10, 1e12, 1e15]
 n_reps = 10   # Number of inference repetitions.
 
-inf_model.hw_EvalModel(analog_model, test_dataloader, t_inferences, n_reps)
+# inf_model.hw_EvalModel(analog_model, test_dataloader, t_inferences, n_reps)
 
-""" test 0820 """
-# g_minmax_list = [[1000.0, 10.0], [1000.0, 20.0],[1000.0, 50.0], [1000.0, 100.0],
-#                  [1000.0, 0.0], [100.0, 0.0],[25.0, 0.0], [10.0, 0.0],
-#                  [1000.0, 5.0], [100.0, 5.0],[25.0, 5.0], [10.0, 5.0]]
-# for g_list in g_minmax_list:
-#     print(f"-------\ng_max,min = {g_list}\n-------")
+
+
+""" onoff ratio test """
+g_minmax_list = [[1000.0, 0.0], [100.0, 0.0],[25.0, 0.0], [10.0, 0.0],
+                 [1000.0, 5.0], [100.0, 5.0],[25.0, 5.0], [10.0, 5.0],
+                 [1000.0, 10.0], [1000.0, 20.0],[1000.0, 50.0], [1000.0, 100.0]]
+
+for g_list in g_minmax_list:
+    print(f"-------\ng_max,min = {g_list}\n-------")
     
-#     inf_model = InfModel(model=model, mode="mnist", g_list=g_list)
-#     analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model using aihwkit
+    inf_model = InfModel(model=model, mode="mnist", g_list=g_list)
+    analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model using aihwkit
 
-#     # Inference
-#     t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9, 1e10, 1e12, 1e15]
-#     n_reps = 10   # Number of inference repetitions.
+    # Inference
+    t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9, 1e10, 1e12, 1e15]
+    n_reps = 10   # Number of inference repetitions.
 
-#     inf_model.hw_EvalModel(analog_model, test_dataloader, t_inferences, n_reps)
+    inf_model.hw_EvalModel(analog_model, test_dataloader, t_inferences, n_reps)
     
     
 """ -------- """
