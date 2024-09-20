@@ -1,6 +1,7 @@
 import os
 import time
 import datetime
+import random
 
 # torch
 import torch
@@ -18,17 +19,19 @@ from aihwkit.nn.conversion import convert_to_analog
 from PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 
 # customized files
-# from network import InfModel
-
 from network import InfModel
 
 # ------------------------------------------------------------------
 
 # Setting
+seed = 0
+random.seed(seed)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+torch.manual_seed(seed)
+if device == 'cuda': torch.cuda.manual_seed_all(seed)
 start = time.time()
 
-import_model = False  # use pretrained model or not
+import_model = True  # use pretrained model or not
 
 if import_model==1:
     # Pretrained model

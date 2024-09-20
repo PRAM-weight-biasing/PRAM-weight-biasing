@@ -24,7 +24,7 @@ from PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 ### =============================================================
 model_name = resnet18(pretrained=True)
 
-prune_percentage = 0.6
+prune_percentage = 0.5
 folder_path = myModule.MakeFolder(f'_prune{prune_percentage}')
 ### =============================================================
 
