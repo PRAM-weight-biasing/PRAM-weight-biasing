@@ -426,11 +426,10 @@ class InfModel(TrainModel):
     def SetConfig(self) :
         rpu_config = InferenceRPUConfig()
         rpu_config.device = PCMPresetUnitCell()      # change to paired PCM devices (Gp-Gm)
-        # rpu_config.noise_model = TestNoiseModel()   # change to customized noise model
-        """ test """
         rpu_config.noise_model = TestNoiseModel(g_max=self.gmax, g_min=self.gmin)  # customized noise model
-        """ ----- """
         rpu_config.drift_compensation = None
+        
+        # set ideal io parameters
         # rpu_config.forward.is_perfect=True
         
         """ Weight modifier parameter """
