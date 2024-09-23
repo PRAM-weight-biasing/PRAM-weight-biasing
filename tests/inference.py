@@ -19,7 +19,7 @@ import myModule
 ### =============================================================
 
 # Setting
-myModule.seed_everything()
+myModule.fix_seed()
 start = time.time()
 
 dir_name = os.getcwd() + '/TestRun/'
@@ -44,7 +44,7 @@ mnist_test = dsets.MNIST(root='MNIST_data/',
                          download=True)
 
 batch_size = 100
-test_dataloader = DataLoader(mnist_test, batch_size= batch_size, shuffle=False)
+test_dataloader = DataLoader(mnist_test, batch_size= batch_size, shuffle=False, num_workers=0)
 
 
 """ inference accuracy in sw """

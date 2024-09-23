@@ -62,7 +62,7 @@ def get_unique_filename(directory:str, base_name:str, extension:str) -> str:
 
         return new_file_name
     
-def seed_everything(seed: Optional[int] = 42) -> None:
+def fix_seed(seed: Optional[int] = 42) -> None:
     """fix the random seed number
 
     Args:

@@ -20,15 +20,13 @@ from PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 
 # customized files
 from network import InfModel
+import myModule
 
 # ------------------------------------------------------------------
 
 # Setting
-seed = 0
-random.seed(seed)
+myModule.fix_seed() 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-torch.manual_seed(seed)
-if device == 'cuda': torch.cuda.manual_seed_all(seed)
 start = time.time()
 
 import_model = True  # use pretrained model or not
@@ -60,7 +58,7 @@ testset = dsets.CIFAR10(root='dataset/',
                         download=True,
                         transform=transform)
 batch_size=200
-testloader = DataLoader(testset, batch_size=batch_size, shuffle=True)  # , num_workers=2
+testloader = DataLoader(testset, batch_size=batch_size, shuffle=True, num_workers=2) 
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer',
            'dog', 'frog', 'horse', 'ship', 'truck')
@@ -80,7 +78,8 @@ inf_model = InfModel(model, "cifar10")
 analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model using aihwkit
 
 # Inference
-t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9, 1e10, 1e12, 1e15]  
+# t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9, 1e10, 1e12, 1e15]  
+t_inferences = [0.0] # test
 n_reps = 10  # Number of inference repetitions.
 
 inf_model.hw_EvalModel(analog_model, testloader, t_inferences, n_reps)
