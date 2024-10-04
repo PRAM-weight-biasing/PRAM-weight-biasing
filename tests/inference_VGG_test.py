@@ -38,16 +38,28 @@ start = time.time()  # calculate running time
 
 # import model and dataset
 
-model = torch.load('./vgg16_cifar10/model_best.pth') #이렇게 하면 안됨. state_dict만 저장되어 있음
+model = torch.load('./VGG_import/model_1002_16.pth') 
 
+
+transform_test = transforms.Compose([
+    transforms.ToTensor(),
+])
+
+test_dataset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
+test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=8)
 
 
 # analog model conversion
+n_reps = 3   # Number of inference repetitions.
 
+inf_model = InfModel(model, "cifar10")
+inf_model.sw_EvalModel(test_dataloader, n_reps)
 
 
 
 # inference test
+
+
 
 
 
