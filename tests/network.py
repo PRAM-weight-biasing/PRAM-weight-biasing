@@ -431,11 +431,23 @@ class InfModel(TrainModel):
         
         # set ideal io parameters
         # rpu_config.forward.is_perfect=True
+        rpu_config.mapping.weight_scaling_omega = 1.0  # 넣으면 non-ideal io에서도 conversion success!!!
         
-        """ Weight modifier parameter """
+        
+        """ Weight clipping & modifier parameter """
         # rpu_config.modifier.type = WeightModifierType.ADD_NORMAL  # Fwd/bwd weight noise.
         # rpu_config.modifier.std_dev = 0.1
         # rpu_config.modifier.pdrop = 0.05  
+        # rpu_config.forward.out_res = -1.0  # Turn off (output) ADC discretization.
+        # rpu_config.forward.w_noise_type = WeightNoiseType.ADDITIVE_CONSTANT
+        # rpu_config.forward.w_noise = 0.02  # Short-term w-noise.
+
+        # rpu_config.clip.type = WeightClipType.FIXED_VALUE
+        # rpu_config.clip.fixed_value = 1.0
+        # rpu_config.modifier.pdrop = 0.03  # Drop connect.
+        # rpu_config.modifier.type = WeightModifierType.ADD_NORMAL  # Fwd/bwd weight noise.
+        # rpu_config.modifier.std_dev = 0.1
+        # rpu_config.modifier.rel_to_actual_wmax = True 
         
         return rpu_config
     

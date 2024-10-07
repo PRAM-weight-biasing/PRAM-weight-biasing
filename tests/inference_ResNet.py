@@ -66,7 +66,7 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer',
 
 
 """ inference accuracy in sw """
-n_reps = 10   # Number of inference repetitions.
+n_reps = 1   # Number of inference repetitions.
 
 inf_model = InfModel(model, "cifar10")
 inf_model.sw_EvalModel(testloader, n_reps)
@@ -78,9 +78,9 @@ inf_model = InfModel(model, "cifar10")
 analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model using aihwkit
 
 # Inference
-# t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9, 1e10, 1e12, 1e15]  
+# t_inferences = [0.0, 10.0,  100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9, 1e10, 1e12, 1e15]  
 t_inferences = [0.0] # test
-n_reps = 10  # Number of inference repetitions.
+n_reps = 2  # Number of inference repetitions.
 
 inf_model.hw_EvalModel(analog_model, testloader, t_inferences, n_reps)
 
