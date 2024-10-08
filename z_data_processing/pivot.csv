@@ -1,0 +1,14 @@
+model,dataset,device,IOparameter,GDC,pgm_noise_scale,read_noise_scale,drift_scale,Gmax,Gmin,n_rep,inf_time,0.01,0.05,0.1,default,log
+Resnet18,CIFAR10,PCMPresetUnitCell,non-ideal,off,0,0,1,default,default,10,1,92.800995,92.814003,92.777,92.808998,92.827003
+Resnet18,CIFAR10,PCMPresetUnitCell,non-ideal,off,0,0,1,default,default,10,10,92.744003,92.744003,92.414001,92.717995,92.762001
+Resnet18,CIFAR10,PCMPresetUnitCell,non-ideal,off,0,0,1,default,default,10,100,92.606003,90.826996,81.884995,90.811996,91.218002
+Resnet18,CIFAR10,PCMPresetUnitCell,non-ideal,off,0,0,1,default,default,10,1000,92.003998,78.621994,25.332001,77.809998,82.013
+Resnet18,CIFAR10,PCMPresetUnitCell,non-ideal,off,0,0,1,default,default,10,3600,91.448006,61.738007,17.056,60.394001,69.199005
+Resnet18,CIFAR10,PCMPresetUnitCell,non-ideal,off,0,0,1,default,default,10,10000,90.811996,45.500999,15.834,44.062,56.105999
+Resnet18,CIFAR10,PCMPresetUnitCell,non-ideal,off,0,0,1,default,default,10,86400,89.091003,22.445004,11.746,21.983997,30.299
+Resnet18,CIFAR10,PCMPresetUnitCell,non-ideal,off,0,0,1,default,default,10,10000000,80.909996,13.503,10.153999,13.107999,15.775
+Resnet18,CIFAR10,PCMPresetUnitCell,non-ideal,off,0,0,1,default,default,10,100000000,74.177002,10.068,10.121,12.434,11.672
+Resnet18,CIFAR10,PCMPresetUnitCell,non-ideal,off,0,0,1,default,default,10,1000000000,65.969002,12.969999,9.973,10.0,12.654001
+Resnet18,CIFAR10,PCMPresetUnitCell,non-ideal,off,0,0,1,default,default,10,10000000000,56.769001,10.008,10.000999,10.0,10.0
+Resnet18,CIFAR10,PCMPresetUnitCell,non-ideal,off,0,0,1,default,default,10,1000000000000,39.756001,10.117,9.925,10.0,10.0
+Resnet18,CIFAR10,PCMPresetUnitCell,non-ideal,off,0,0,1,default,default,10,1000000000000000,23.724001,10.032,9.923,10.0,10.0
