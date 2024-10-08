@@ -80,8 +80,8 @@ class TestNoiseModel(BaseNoiseModel):
         t_0: float = 20.0,
         # prog_noise_scale: float = 1.0,
         # read_noise_scale: float = 1.0,
-        prog_noise_scale: float = 0.0,
-        read_noise_scale: float = 0.0,
+        prog_noise_scale: float = 1.0,
+        read_noise_scale: float = 1.0,
         drift_scale: float = 1.0,
         prog_coeff_g_max_reference: Optional[float] = None,
     ):

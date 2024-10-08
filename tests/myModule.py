@@ -4,6 +4,7 @@ from typing import Optional
 import random
 import torch
 import numpy as np
+import gc
 
 
 def MakeFolder(test: Optional[str]) :
@@ -78,3 +79,16 @@ def fix_seed(seed: Optional[int] = 42) -> None:
     torch.backends.cudnn.deterministic = True
     os.environ["PYTHONHASHSEED"] = str(seed)
     os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
+
+def clear_memory():
+    """
+    clear all the memory
+    """
+    
+    # for cpu
+    gc.collect()
+    
+    # for gpu (pytorch)
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
