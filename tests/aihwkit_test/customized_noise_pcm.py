@@ -78,10 +78,10 @@ class TestNoiseModel(BaseNoiseModel):
         g_min: Optional[float] = None,
         t_read: float = 250.0e-9,
         t_0: float = 20.0,
-        # prog_noise_scale: float = 1.0,
-        # read_noise_scale: float = 1.0,
-        prog_noise_scale: float = 0.0,
-        read_noise_scale: float = 0.0,
+        prog_noise_scale: float = 1.0,
+        read_noise_scale: float = 1.0,
+        # prog_noise_scale: float = 0.0,
+        # read_noise_scale: float = 0.0,
         drift_scale: float = 1.0,
         prog_coeff_g_max_reference: Optional[float] = None,
     ):
@@ -145,7 +145,7 @@ class TestNoiseModel(BaseNoiseModel):
         mu_zero = 0
         mu_gst225 = -0.1841* (g_relative**3) + 0.4204* (g_relative**2) - 0.3134 * g_relative + 0.08465
         
-        mu_drift = mu_gst225 # final
+        mu_drift = mu_log # final
         
         """ sig_drift """
         sig_orig = (-0.0125 * log(g_relative) - 0.0059).clamp(min=0.008, max=0.045)
