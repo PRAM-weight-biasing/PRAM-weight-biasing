@@ -16,7 +16,7 @@ import torch.optim as optim
 from aihwkit.nn.conversion import convert_to_analog
 
 # pretrained resnet model from - https://github.com/huyvnphan/PyTorch_CIFAR10.git
-from PyTorch_CIFAR10.cifar10_models.resnet import resnet18
+from Model.PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 
 # customized files
 from network import InfModel

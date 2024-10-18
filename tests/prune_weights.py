@@ -3,31 +3,32 @@ import random
 import os
 
 # import customized files
+import myModule
 from network import PruneModel, TrainModel, Vis_Model
-
-from PyTorch_CIFAR10.cifar10_models.resnet import resnet18
-
-### =============================================================
-
-
-# Setting
-# random.seed(777)
-# torch.manual_seed(777)
-
-dir_name = os.getcwd() + '/TestRun/'
-# ===========================================
-""" need to change """
-test_time = "Test_2024-08-01 11:52:18" 
-# ===========================================
-folder_path = dir_name + test_time
-model_name = 'best_model.pth'
+from Model.PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 
 ### =============================================================
-# model_name = resnet18(pretrained=True)
-# folder_path = dir_name + 'resnet_pruning_0801'
-### =============================================================
 
-prune_percentage = 0.6
+
+# Import model
+model_type = input("Input model type? (MLP/Resnet18) : ")
+prune_percentage = input('Prune percentage? (0~1) :')
+
+if model_type == 'MLP':
+    dir_name = os.getcwd() + '/TestRun/'
+    # ===========================================
+    """ need to change """
+    test_time = "Test_2024-08-01 11:52:18" 
+    # ===========================================
+    folder_path = dir_name + test_time
+    model_name = 'best_model.pth'
+    
+elif model_type == 'Resnet18':
+    model_name = resnet18(pretrained=True)
+    folder_path = myModule.MakeFolder(f'_prune{prune_percentage}')
+
+
+# prune_percentage = 0.6
 
 # local pruning : prune each layer
 PruneTest1 = PruneModel(model_name, folder_path)
