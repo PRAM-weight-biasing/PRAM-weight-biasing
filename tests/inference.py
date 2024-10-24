@@ -26,9 +26,17 @@ dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
 """ need to change """
 test_time = "Test_2024-08-01 11:52:18" 
+# folder_name = test_time
+
+folder_name = "Test_2024-10-18_13-45_MLP_p0.3"
+# "Test_2024-10-18_13-45_MLP_p0.3"
+# "Test_2024-10-24_13-35_MLP_p0.4"
+# "Test_2024-10-24_13-36_MLP_p0.5"
+# "Test_2024-10-24_13-36_MLP_p0.6"
+# "Test_2024-10-24_13-36_MLP_p0.7"
 # ===========================================
-folder_path = dir_name + test_time
-model_name = 'best_model.pth'
+folder_path = dir_name + folder_name
+model_name = 'local_pruned_model.pth'
 
 model = torch.load(f'{folder_path}/{model_name}')
 
@@ -48,7 +56,7 @@ test_dataloader = DataLoader(mnist_test, batch_size= batch_size, shuffle=False, 
 
 
 """ inference accuracy in sw """
-n_reps = 1   # Number of inference repetitions.
+n_reps = 10   # Number of inference repetitions.
 
 inf_model = InfModel(model, "mnist")
 inf_model.sw_EvalModel(test_dataloader, n_reps)
@@ -87,6 +95,7 @@ inf_model.hw_EvalModel(analog_model, test_dataloader, t_inferences, n_reps)
     
 """ -------- """
 
+myModule.clear_memory()
 
 # ------------------------------------------------------------------
 # measure run-time
