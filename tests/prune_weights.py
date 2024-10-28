@@ -10,14 +10,14 @@ from Model.PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 # =============================================================
 
 # Import model
-model_type = input("Input model type? (MLP/Resnet18) : ")
+model_type = input("Input model type? (1: MLP/2: Resnet18) : ")
 prune_percentage = float(input('Pruning percentage? (0~1) : '))
 
-if model_type == 'MLP':
+if model_type == '1':
     dir_name = os.getcwd() + '/Model/MLP'
     model_name = torch.load(f'{dir_name}/best_model.pth')
     
-elif model_type == 'Resnet18':
+elif model_type == '2':
     model_name = resnet18(pretrained=True)
     
 folder_path = myModule.MakeFolder(f'_{model_type}_p{prune_percentage}')

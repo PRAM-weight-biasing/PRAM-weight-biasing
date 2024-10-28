@@ -391,7 +391,7 @@ class PruneModel():
 
     def Vis_local_w(self) -> None:
         for name, module in self.premodel.named_modules():
-            if isinstance(module, nn.Linear):
+            if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
                 self.Vis_w_dist(module)
                 file_name = myModule.get_unique_filename(self.folder_path, f'weight_dist_{name}', 'png')
                 plt.savefig(f'{self.folder_path}/{file_name}')
