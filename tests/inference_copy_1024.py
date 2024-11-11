@@ -28,11 +28,11 @@ dir_name = os.getcwd() + '/TestRun/'
 # test_time = "Test_2024-08-01 11:52:18" 
 # folder_name = test_time
 
-name_list = ["Test_2024-10-28_15-15_Resnet18_p0.3",
-             "Test_2024-10-28_15-22_Resnet18_p0.4",
-             "Test_2024-10-28_15-26_Resnet18_p0.5",
-             "Test_2024-10-28_15-27_Resnet18_p0.6",
-             "Test_2024-10-28_15-32_Resnet18_p0.7"
+name_list = ["Test_2024-10-18_13-45_MLP_p0.3",
+             "Test_2024-10-24_13-35_MLP_p0.4",
+             "Test_2024-10-24_13-36_MLP_p0.5",
+             "Test_2024-10-24_13-36_MLP_p0.6",
+             "Test_2024-10-24_13-36_MLP_p0.7"
                ]
 # ===========================================
 
@@ -77,15 +77,15 @@ for folder_name in name_list:
     print(f'folder : {folder_name}')
     
     folder_path = dir_name + folder_name
-    model_name = 'local_pruned_model.pth'
+    model_name = 'retrain/best_model.pth'
 
     model = torch.load(f'{folder_path}/{model_name}')
 
     """ inference accuracy in sw """
     n_reps = 10   # Number of inference repetitions.
 
-    # inf_model = InfModel(model, datatype)
-    # inf_model.sw_EvalModel(testloader, n_reps)
+    inf_model = InfModel(model, datatype)
+    inf_model.sw_EvalModel(testloader, n_reps)
 
 
     """ inference accuracy in hw (simulator) """

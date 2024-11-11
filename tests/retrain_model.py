@@ -19,10 +19,10 @@ torch.manual_seed(777)
 dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
 """ need to change """
-test_time = "Test_2024-08-01 11:52:18" 
+test_time = "Test_2024-10-24_13-36_MLP_p0.7" 
 # ===========================================
 folder_path = dir_name + test_time
-model_name = 'global_pruned_model.pth'
+model_name = 'local_pruned_model.pth'
 
 
 """ for test """ # ===========================
