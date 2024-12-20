@@ -145,7 +145,7 @@ class TestNoiseModel(BaseNoiseModel):
         mu_zero = 0
         mu_gst225 = -0.1841* (g_relative**3) + 0.4204* (g_relative**2) - 0.3134 * g_relative + 0.08465
         
-        mu_drift = mu_const_001 # final
+        mu_drift = mu_log # final
         
         """ sig_drift """
         sig_orig = (-0.0125 * log(g_relative) - 0.0059).clamp(min=0.008, max=0.045)
