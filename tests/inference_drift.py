@@ -90,7 +90,7 @@ for folder_name in name_list:
     n_reps = 10   # Number of inference repetitions.
 
     inf_model = InfModel(model, datatype)
-    inf_model.sw_EvalModel(testloader, n_reps)
+    # inf_model.sw_EvalModel(testloader, n_reps)
 
 
     """ inference accuracy in hw (simulator) """
