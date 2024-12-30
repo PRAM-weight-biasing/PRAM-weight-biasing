@@ -21,7 +21,7 @@ from copy import deepcopy
 from typing import List, Optional
 
 from numpy import log as numpy_log
-from numpy import sqrt
+from numpy import sqrt, exp
 from torch import abs as torch_abs
 from torch import clamp, log, randn_like, Tensor
 from torch.autograd import no_grad
@@ -144,8 +144,9 @@ class TestNoiseModel(BaseNoiseModel):
         mu_const_001 = 0.01
         mu_zero = 0
         mu_gst225 = -0.1841* (g_relative**3) + 0.4204* (g_relative**2) - 0.3134 * g_relative + 0.08465
+        mu_msr = 0.0513*exp(-4.9751*g_relative**0.5803) + 0.0069
         
-        mu_drift = mu_log # final
+        mu_drift = mu_const_001 # final
         
         """ sig_drift """
         sig_orig = (-0.0125 * log(g_relative) - 0.0059).clamp(min=0.008, max=0.045)
