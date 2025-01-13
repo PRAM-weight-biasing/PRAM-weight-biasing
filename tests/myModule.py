@@ -5,6 +5,8 @@ import random
 import torch
 import numpy as np
 import gc
+import pandas as pd
+import sys
 
 
 def MakeFolder(test: Optional[str]) :
@@ -92,3 +94,45 @@ def clear_memory():
     # for gpu (pytorch)
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
+        
+ 
+class trace():        
+    def __init__(self):
+        self.trace_data = pd.DataFrame(columns=["File", "Function", "Line"])
+        
+    def start_trace(self):
+        sys.settrace(self.trace_callback)
+        
+    def trace_callback(self, frame, event, arg):
+        """ trace the used modules with directory
+
+        Args:
+            frame (_type_): currently running frame
+            event (_type_): type of events (e.g., "call", "line")
+            arg (_type_): additional information
+
+        Returns:
+            _type_: function after tracing
+        """
+        folder_path = "/home/syoon/CM/compact_model_nmdl/.venv/lib/python3.10/site-packages/aihwkit"
+        
+        if event == "call":  # 함수 호출 시점만 추적
+            file_name = frame.f_code.co_filename
+            if folder_path in file_name:  # .venv/aihwkit 폴더 내부만 추적
+                func_name = frame.f_code.co_name
+                line_number = frame.f_lineno
+                # print(f"Function '{func_name}' called in {file_name}")
+                
+                self.trace_data = pd.concat([self.trace_data, pd.DataFrame([{
+                "File": file_name,
+                "Function": func_name,
+                "Line": line_number
+                }])], ignore_index=True)
+                
+        return self.trace_callback
+    
+    def save_trace_results(self):
+        """ save results to a csv file
+        """
+        sys.settrace(None)
+        self.trace_data.to_csv("trace_results.csv", index=False, encoding="utf-8")
