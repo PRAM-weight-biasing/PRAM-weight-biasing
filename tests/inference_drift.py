@@ -23,8 +23,8 @@ myModule.fix_seed()
 start = time.time()
 
 # trace the imported files in aihwkit folder
-tracelog = myModule.trace()
-tracelog.start_trace()
+# tracelog = myModule.trace()
+# tracelog.start_trace()
 
 dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
@@ -33,18 +33,17 @@ dir_name = os.getcwd() + '/TestRun/'
 # folder_name = test_time
 
 # name_list = ["pretrained-resnet18"]
-name_list = ["Test_2024-10-18_13-45_MLP_p0.3"
-            # "Test_2024-10-28_15-15_Resnet18_p0.3"
-            #  , "Test_2024-10-28_15-22_Resnet18_p0.4"
-            #  ,  "Test_2024-10-28_15-26_Resnet18_p0.5"
-            #  , "Test_2024-10-28_15-27_Resnet18_p0.6"
-            #  , "Test_2024-10-28_15-32_Resnet18_p0.7"
+name_list = ["Test_2024-10-28_15-15_Resnet18_p0.3"
+             , "Test_2024-10-28_15-22_Resnet18_p0.4"
+             ,  "Test_2024-10-28_15-26_Resnet18_p0.5"
+             , "Test_2024-10-28_15-27_Resnet18_p0.6"
+#              , "Test_2024-10-28_15-32_Resnet18_p0.7"
                ]
 # ===========================================
 
 model_type = input("Input model type? (1: MLP/2: Resnet18) : ")
 print(name_list)
-model_name = 'retrain/best_model.pth'
+model_name = 'local_pruned_model.pth'
 
 # set test dataloader
 if model_type == '1':
@@ -85,8 +84,6 @@ for folder_name in name_list:
     print(f'folder : {folder_name}')
     
     folder_path = dir_name + folder_name
-    # model_name = 'local_pruned_model.pth'
-
     model = torch.load(f'{folder_path}/{model_name}')
     # model = resnet18(pretrained=True)
 
@@ -102,9 +99,9 @@ for folder_name in name_list:
     analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model using aihwkit
 
     # Inference
-    t_inferences = [0.0]
-    # t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9]
-    n_reps = 1   # Number of inference repetitions.
+    # t_inferences = [0.0]
+    t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9]
+    n_reps = 10   # Number of inference repetitions.
     inf_model.hw_EvalModel(analog_model, testloader, t_inferences, n_reps)
 
     myModule.clear_memory()
@@ -130,7 +127,7 @@ for folder_name in name_list:
 """ -------- """
 
 # tracing ends
-tracelog.save_trace_results()
+# tracelog.save_trace_results()
 
 # ------------------------------------------------------------------
 # measure run-time
