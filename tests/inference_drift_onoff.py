@@ -5,11 +5,6 @@ import time
 import datetime
 import numpy as np
 
-from torch.utils.data import DataLoader
-import torchvision.datasets as dsets
-from torchvision.transforms import ToTensor
-import torchvision.transforms as transforms
-
 from aihwkit.nn.conversion import convert_to_analog
 from Model.PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 
@@ -42,41 +37,10 @@ name_list = ["pretrained-model"]
 
 model_type = input("Input model type? (1: MLP/2: Resnet18) : ")
 print(name_list)
-model_name = 'local_pruned_model.pth'
+model_name = 'best_model.pth'
 
 # set test dataloader
-if model_type == '1':
-    datatype = "mnist"
-    # mnist test dataset
-    mnist_transform = transforms.Compose([
-                transforms.ToTensor(),   # transform : convert image to tensor. Normalized to 0~1
-                transforms.Normalize((0.1307,), (0.3081,))
-    ])
-
-    mnist_test = dsets.MNIST(root='MNIST_data/',
-                            train=False,
-                            transform=mnist_transform,
-                            download=True)
-
-    batch_size = 100
-    testloader = DataLoader(mnist_test, batch_size= batch_size, shuffle=False, num_workers=0)
-
-elif model_type == '2':
-    datatype = "cifar10"
-    # cifar10 test dataset
-    cifar10_transform = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2471, 0.2435, 0.2616))
-    ])
-
-    cifar10_test = dsets.CIFAR10(root='dataset/',
-                            train=False,
-                            download=True,
-                            transform=cifar10_transform)
-
-    batch_size=200
-    testloader = DataLoader(cifar10_test, batch_size=batch_size, shuffle=True, num_workers=2) 
-
+datatype, testloader = myModule.set_dataloader(model_type)
 
 # iteration
 for folder_name in name_list:
@@ -93,17 +57,37 @@ for folder_name in name_list:
 
 
     """ inference accuracy in hw (simulator) """
-    # convert to aihwkit simulator
-    inf_model = InfModel(model, datatype)
+    # # convert to aihwkit simulator
+    # inf_model = InfModel(model, datatype)
+    # analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model using aihwkit
+
+    # # Inference
+    # # t_inferences = [0.0]
+    # t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9]
+    # n_reps = 10   # Number of inference repetitions.
+    # inf_model.hw_EvalModel(analog_model, testloader, t_inferences, n_reps)
+
+    # myModule.clear_memory()
+
+""" iteration test (onoff ratio) """
+g_minmax_list = [[0,25], [1,25], [2,25], [5,25], [7,25], [10,25]]  # [min,max]
+# model = torch.load(os.getcwd() + '/Model/MLP/best_model.pth')
+model = resnet18(pretrained=True)
+
+for g_list in g_minmax_list:
+    print(f"-------\ng_min,max = {g_list}\n-------")
+    
+    inf_model = InfModel(model=model, mode=datatype, g_list=g_list)
     analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model using aihwkit
 
     # Inference
-    # t_inferences = [0.0]
-    t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9]
-    n_reps = 10   # Number of inference repetitions.
+    t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9]  
+    n_reps = 10  # Number of inference repetitions.
     inf_model.hw_EvalModel(analog_model, testloader, t_inferences, n_reps)
-
-    myModule.clear_memory()
+    
+    myModule.clear_memory() # clear memory
+    
+""" -------- """
 
 # tracing ends
 # tracelog.save_trace_results()

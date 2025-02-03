@@ -7,6 +7,10 @@ import numpy as np
 import gc
 import pandas as pd
 import sys
+from torch.utils.data import DataLoader
+import torchvision.datasets as dsets
+from torchvision.transforms import ToTensor
+import torchvision.transforms as transforms
 
 
 def MakeFolder(test: Optional[str]) :
@@ -95,6 +99,50 @@ def clear_memory():
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
         
+
+def set_dataloader(model_type: str):
+    """set test dataloader
+
+    Args:
+        model_type (str): 1: MLP/2: Resnet18
+
+    Returns:
+        datatype (str) : mnist / cifar10
+        test dataloader (DataLoader)
+    """
+    if model_type == '1':
+        datatype = "mnist"
+        # mnist test dataset
+        mnist_transform = transforms.Compose([
+                    transforms.ToTensor(),   # transform : convert image to tensor. Normalized to 0~1
+                    transforms.Normalize((0.1307,), (0.3081,))
+        ])
+
+        mnist_test = dsets.MNIST(root='MNIST_data/',
+                                train=False,
+                                transform=mnist_transform,
+                                download=True)
+
+        batch_size = 100
+        testloader = DataLoader(mnist_test, batch_size= batch_size, shuffle=False, num_workers=0)
+
+    elif model_type == '2':
+        datatype = "cifar10"
+        # cifar10 test dataset
+        cifar10_transform = transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2471, 0.2435, 0.2616))
+        ])
+
+        cifar10_test = dsets.CIFAR10(root='dataset/',
+                                train=False,
+                                download=True,
+                                transform=cifar10_transform)
+
+        batch_size=200
+        testloader = DataLoader(cifar10_test, batch_size=batch_size, shuffle=True, num_workers=2) 
+    
+    return datatype, testloader
  
 class trace():        
     def __init__(self):
