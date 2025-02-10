@@ -30,14 +30,14 @@ dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
 # dir_name = os.getcwd() + '/Model/'
 
-name_list = ["pretrained-model"]
+# name_list = ["pretrained-model"]
 # name_list = ["MLP"]
-# name_list = ["Test_2024-10-28_15-15_Resnet18_p0.3"
-#              , "Test_2024-10-28_15-22_Resnet18_p0.4"
-#              , "Test_2024-10-28_15-26_Resnet18_p0.5"
-# #              , "Test_2024-10-24_13-36_MLP_p0.6"
-# #              , "Test_2024-10-24_13-36_MLP_p0.7"
-#                ]
+name_list = ["Test_2024-10-18_13-45_MLP_p0.3"
+             , "Test_2024-10-24_13-35_MLP_p0.4"
+             , "Test_2024-10-24_13-36_MLP_p0.5"
+             , "Test_2024-10-24_13-36_MLP_p0.6"
+             , "Test_2024-10-24_13-36_MLP_p0.7"
+               ]
 # ===========================================
 
 model_type = input("Input model type? (1: MLP/2: Resnet18) : ")
@@ -83,13 +83,13 @@ for folder_name in name_list:
     print(f'folder : {folder_name}')
     
     folder_path = dir_name + folder_name
-    # model = torch.load(f'{folder_path}/{model_name}')
-    model = resnet18(pretrained=True)
+    model = torch.load(f'{folder_path}/{model_name}')
+    # model = resnet18(pretrained=True)
 
     """ inference accuracy in sw """
     n_reps = 10   # Number of inference repetitions.
     inf_model = InfModel(model, datatype)
-    # inf_model.sw_EvalModel(testloader, n_reps)
+    inf_model.sw_EvalModel(testloader, n_reps)
 
 
     """ inference accuracy in hw (simulator) """
@@ -98,8 +98,7 @@ for folder_name in name_list:
     analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model using aihwkit
 
     # Inference
-    t_inferences = [0.0, 10.0, 100.0, 1000.0]
-    # t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9]
+    t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9]
     n_reps = 10   # Number of inference repetitions.
     inf_model.hw_EvalModel(analog_model, testloader, t_inferences, n_reps)
 
