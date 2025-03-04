@@ -90,7 +90,7 @@ pred_before = model(x)
 print("Correct value:\t {}".format(y.detach().cpu().numpy().flatten()))
 print("Prediction after training:\t {}".format(pred_before.detach().cpu().numpy().flatten()))
 
-for t_inference in [0.0, 1.0, 20.0, 1000.0, 1e5]:
+for t_inference in [0.0]: #, 1.0, 20.0, 1000.0, 1e5
     # print(model.get_weights())
     model.drift_analog_weights(t_inference)
     pred_drift = model(x)
@@ -108,7 +108,7 @@ for t_inference in [0.0, 1.0, 20.0, 1000.0, 1e5]:
         conductance_pair = rpu_config.noise_model.g_converter.convert_to_conductances(tensors)
         conductance, _ = conductance_pair
         gp, gm = conductance
-        print("gp: {}".format(gp))
+        print("gp: {}".format(gp)) # weight & bias
         print("gm: {}".format(gm))
     
 
