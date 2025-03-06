@@ -70,7 +70,7 @@ for folder_name in name_list:
     # myModule.clear_memory()
 
 """ iteration test (onoff ratio) """
-g_minmax_list = [[0,25], [1,25], [2,25], [5,25], [7,25], [10,25]]  # [min,max]
+g_minmax_list = [[0.13987,25], [0.19014,25], [0.24878,25], [0.32823,25]]  # [min,max]
 # model = torch.load(os.getcwd() + '/Model/MLP/best_model.pth')
 model = resnet18(pretrained=True)
 

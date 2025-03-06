@@ -12,6 +12,7 @@ import torchvision.transforms as transforms
 
 from aihwkit.nn.conversion import convert_to_analog
 from Model.PyTorch_CIFAR10.cifar10_models.resnet import resnet18
+from Model.PyTorch_CIFAR10.cifar10_models.vgg import vgg16_bn
 
 # import customized files
 from network import InfModel
@@ -32,15 +33,15 @@ dir_name = os.getcwd() + '/TestRun/'
 
 # name_list = ["pretrained-model"]
 # name_list = ["MLP"]
-name_list = ["Test_2024-10-18_13-45_MLP_p0.3"
-             , "Test_2024-10-24_13-35_MLP_p0.4"
-             , "Test_2024-10-24_13-36_MLP_p0.5"
-             , "Test_2024-10-24_13-36_MLP_p0.6"
-             , "Test_2024-10-24_13-36_MLP_p0.7"
+name_list = ['Test_2024-10-28_15-15_Resnet18_p0.3'
+             , 'Test_2024-10-28_15-22_Resnet18_p0.4'
+             , 'Test_2024-10-28_15-26_Resnet18_p0.5'
+             , 'Test_2024-10-28_15-27_Resnet18_p0.6'
+            #  , "Test_2024-10-24_13-36_MLP_p0.7"
                ]
 # ===========================================
 
-model_type = input("Input model type? (1: MLP/2: Resnet18) : ")
+model_type = input("Input model type? (1: MLP/2: Resnet or VGG) : ")
 print(name_list)
 model_name = 'local_pruned_model.pth'
 
@@ -85,9 +86,10 @@ for folder_name in name_list:
     folder_path = dir_name + folder_name
     model = torch.load(f'{folder_path}/{model_name}')
     # model = resnet18(pretrained=True)
+    # model = vgg16_bn(pretrained=True)
 
     """ inference accuracy in sw """
-    n_reps = 10   # Number of inference repetitions.
+    n_reps = 1   # Number of inference repetitions.
     inf_model = InfModel(model, datatype)
     inf_model.sw_EvalModel(testloader, n_reps)
 
