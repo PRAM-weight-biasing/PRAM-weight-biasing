@@ -96,7 +96,7 @@ for folder_name in name_list:
 
     """ inference accuracy in hw (simulator) """
     # convert to aihwkit simulator
-    inf_model = InfModel(model, datatype)
+    inf_model = InfModel(model=model, mode=datatype, g_list=[0.1905, 25])
     analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model using aihwkit
 
     # Inference
