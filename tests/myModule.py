@@ -100,51 +100,76 @@ def clear_memory():
         torch.cuda.empty_cache()
         
 
-def set_dataloader(model_type: str):
+def set_dataloader(data_type: str):
     """set test dataloader
 
     Args:
-        model_type (str): 1: MLP/2: Resnet18
+        data_type (str): MNIST / CIFAR-10
 
     Returns:
-        datatype (str) : mnist / cifar10
+        train dataloader (DataLoader)
         test dataloader (DataLoader)
     """
-    if model_type == '1':
-        datatype = "mnist"
-        # mnist test dataset
+    if data_type == 'mnist':
+        
+        # set transform
         mnist_transform = transforms.Compose([
                     transforms.ToTensor(),   # transform : convert image to tensor. Normalized to 0~1
                     transforms.Normalize((0.1307,), (0.3081,))
         ])
 
-        mnist_test = dsets.MNIST(root='MNIST_data/',
+        # mnist dataset
+        mnist_train = dsets.MNIST(root='dataset/',
+                          train=True,
+                          transform=mnist_transform,  
+                          download=True)
+        
+        mnist_test = dsets.MNIST(root='dataset/',
                                 train=False,
                                 transform=mnist_transform,
                                 download=True)
 
         batch_size = 100
-        testloader = DataLoader(mnist_test, batch_size= batch_size, shuffle=False, num_workers=0)
+        
+        trainloader = DataLoader(mnist_train, batch_size= batch_size, shuffle=True, num_workers=2)
+        testloader = DataLoader(mnist_test, batch_size= batch_size, shuffle=False, num_workers=2)
 
-    elif model_type == '2':
-        datatype = "cifar10"
-        # cifar10 test dataset
-        cifar10_transform = transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2471, 0.2435, 0.2616))
+    elif data_type == 'cifar10':
+        
+        # set transform
+        cifar10_transform_train = transforms.Compose([
+                                # transforms.RandomCrop(32, padding=4),  # for data augmentation
+                                # transforms.RandomHorizontalFlip(),     # for data augmentation
+                                transforms.ToTensor(),
+                                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2471, 0.2435, 0.2616))
+        ])
+        
+        cifar10_transform_test = transforms.Compose([
+                                transforms.ToTensor(),
+                                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2471, 0.2435, 0.2616))
         ])
 
+        # cifar10 dataset
+        cifar10_train = dsets.CIFAR10(root='dataset/',
+                                train=True,
+                                download=True,
+                                transform=cifar10_transform_train)
+        
         cifar10_test = dsets.CIFAR10(root='dataset/',
                                 train=False,
                                 download=True,
-                                transform=cifar10_transform)
+                                transform=cifar10_transform_test)
 
         batch_size=200
-        testloader = DataLoader(cifar10_test, batch_size=batch_size, shuffle=True, num_workers=2) 
+        
+        trainloader = DataLoader(cifar10_train, batch_size=batch_size, shuffle=True, num_workers=2) 
+        testloader = DataLoader(cifar10_test, batch_size=batch_size, shuffle=False, num_workers=2) 
     
-    return datatype, testloader
+    return trainloader, testloader
  
-class trace():        
+class trace():   
+    """ trace the imported files while running code """     
+    
     def __init__(self):
         self.trace_data = pd.DataFrame(columns=["File", "Function", "Line"])
         

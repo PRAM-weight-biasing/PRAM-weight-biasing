@@ -70,7 +70,7 @@ class TrainModel():
         test_loss_list = []
         accuracy_list = []
 
-        # # Define the learning rate scheduler
+        # Define the learning rate scheduler
         scheduler = ReduceLROnPlateau(optimizer, 'min', patience=patience)
 
         # Train and test
@@ -245,13 +245,99 @@ class TrainModel():
         plt.savefig(f'{folder_path}/graph.png')
         plt.clf()
         
+    def cifar_resnet(self, learning_rate: float, num_epochs: int, folder_path) -> None:
+        for _, param in self.model.named_parameters():
+            param.requires_grad = True  # train all Conv & FC layers
+            # print(name, param.requires_grad)
+                        
+        # Define the loss function and optimizer
+        loss_fn = nn.CrossEntropyLoss()
+        optimizer = Adam(self.model.parameters(), lr= learning_rate, weight_decay=5e-4)
+        # scheduler = lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
+        scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=5)  # 잘 안되면 이걸로
+        
+        # Initialize parameters
+        best_loss = float('inf')  # Initialize with a high number
+        best_acc = 0
+        best_Epoch, best_LR = 0, 0
+        train_loss_list = []
+        test_loss_list = []
+        acc_list = []
+        
+        # Train and test
+        self.model.train()
+        
+        for epoch in range(num_epochs):
+            
+            # Train
+            total_train_loss = 0
 
-    
-    def CIFAR_ResNet(self, learning_rate: float, num_epochs: int, folder_path) -> None:
-        None
+            for batch_idx, (inputs, targets) in enumerate(self.train_dataloader):
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
+                outputs = self.model(inputs)
+                loss = loss_fn(outputs, targets)
+                total_train_loss += loss.item()                
+                
+                optimizer.zero_grad()   # Initialize the optimizer
+                loss.backward()         # calculate gradient
+                optimizer.step()        # update weights : w -= lr * w.grad
+                
+            total_train_loss /= len(self.train_dataloader)
+            train_loss_list.append(total_train_loss)
+            
+            # Test
+            # self.model.eval()
+            test_loss, test_acc = self.eval_cifar10(self.model, self.test_dataloader)
+            test_loss_list.append(test_loss)
+            acc_list.append(test_acc)
+            
+            # If the accuracy improved, save the model
+            if test_acc > best_acc:
+                best_acc = test_acc
+                best_loss = test_loss
+                
+                # save only best model parameter
+                torch.save(self.model.state_dict(), f'{folder_path}/best_model_param.pth')
+                best_Epoch, best_LR = epoch+1, optimizer.param_groups[0]['lr']
 
+                # Save the model
+                torch.save(self.model, f'{folder_path}/best_model.pth')
 
-    def LossFunction(self, loss_type: str, y_true, y_pred) -> None:
+            scheduler.step(test_loss)
+            
+            # Print info 
+            if epoch % 5 == 0:  
+                print(f"Epoch {epoch+1}/{num_epochs}, \tLearning Rate: {optimizer.param_groups[0]['lr']:.1e}, \tTrain Loss: {total_train_loss:.6f}, \tTest Loss: {test_loss:.6f}, \tTest Accuracy : {test_acc:.2f}%")
+        
+        print(f"\n test loss: {best_loss:.6f}, Best test accuracy: {best_acc:.2f}%, Epoch: {best_Epoch}, LR: {best_LR:.2e}\n")
+        self.Vis_accuracy(num_epochs, train_loss_list, test_loss_list, acc_list, folder_path)
+            
+            
+    def eval_cifar10(self, model, test_loader) -> float:
+        # model.to(self.device)
+        self.model.eval()
+
+        total = 0
+        correct = 0
+        test_loss = 0
+        
+        with torch.no_grad():
+            # model.eval()
+            
+            for data in test_loader:
+                images, targets = data[0].to(self.device), data[1].to(self.device)
+                outputs = model(images)
+                _, predicted = torch.max(outputs.data, 1)
+                total += targets.size(0)
+                correct += (predicted == targets).sum().item()
+                test_loss += nn.CrossEntropyLoss()(outputs, targets)
+                        
+            test_accuracy = 100* (correct / total)
+            test_loss /= len(test_loader)
+                
+            return test_loss, test_accuracy
+
+    def __LossFunction(self, loss_type: str, y_true, y_pred) -> None:
         mse =  nn.MSELoss()(y_true, y_pred)
         smoothL1 = nn.SmoothL1Loss()(y_true, y_pred)
         crossEntropy = torch.nn.CrossEntropyLoss()(y_true, y_pred)
@@ -487,7 +573,7 @@ class InfModel(TrainModel):
                 f"Test set accuracy (%) in s/w: \t mean: {inference_accuracy_values.mean() :.6f}, \t std: {inference_accuracy_values.std() :.6f}"
             )
             
-    def eval_cifar10(self, model, test_loader) -> float:
+    def __eval_cifar10(self, model, test_loader) -> float:
         # Move model to the correct device
         model.to(self.device)
         
