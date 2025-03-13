@@ -138,8 +138,8 @@ def set_dataloader(data_type: str):
         
         # set transform
         cifar10_transform_train = transforms.Compose([
-                                # transforms.RandomCrop(32, padding=4),  # for data augmentation
-                                # transforms.RandomHorizontalFlip(),     # for data augmentation
+                                transforms.RandomCrop(32, padding=4),  # for data augmentation
+                                transforms.RandomHorizontalFlip(),     # for data augmentation
                                 transforms.ToTensor(),
                                 transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2471, 0.2435, 0.2616))
         ])

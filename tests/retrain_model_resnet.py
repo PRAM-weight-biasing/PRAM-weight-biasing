@@ -24,7 +24,7 @@ start = time.time()
 # Load model
 dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
-folder_name = "Test_2024-10-28_15-22_Resnet18_p0.4" 
+folder_name = "Test_2024-10-28_15-27_Resnet18_p0.6" 
 # ===========================================
 folder_path = dir_name + folder_name
 model_name = 'local_pruned_model.pth'

@@ -223,6 +223,11 @@ class TrainModel():
         # Visualize loss and accuracy per epoch
 
         plt.figure(figsize=(12,4))
+        
+        # convert GPU tensors to CPU
+        train_loss = [t.cpu().numpy() if torch.is_tensor(t) else t for t in train_loss]
+        test_loss = [t.cpu().numpy() if torch.is_tensor(t) else t for t in test_loss]
+        accuracy_list = [t.cpu().numpy() if torch.is_tensor(t) else t for t in accuracy_list]
 
         # plot loss vs. epoch
         plt.subplot(1,3,1)
@@ -513,7 +518,7 @@ class InfModel(TrainModel):
         rpu_config = InferenceRPUConfig()
         rpu_config.device = PCMPresetUnitCell()      # change to paired PCM devices (Gp-Gm)
         rpu_config.noise_model = TestNoiseModel(g_max=self.gmax, g_min=self.gmin)  # customized noise model
-        # rpu_config.drift_compensation = None   # apply GDC or not
+        rpu_config.drift_compensation = None   # apply GDC or not
                 
         # set ideal io parameters
         rpu_config.forward.is_perfect=True
