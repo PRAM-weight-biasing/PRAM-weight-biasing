@@ -33,13 +33,12 @@ dir_name = os.getcwd() + '/TestRun/'
 
 name_list = ["pretrained-model"]
 # name_list = ["MLP"]
-# name_list = [
-    #'Test_2024-10-28_15-15_Resnet18_p0.3'
-            #  , 'Test_2024-10-28_15-22_Resnet18_p0.4'
+# name_list = ['Test_2024-10-28_15-15_Resnet18_p0.3'
+#              , 'Test_2024-10-28_15-22_Resnet18_p0.4'
 #              , 'Test_2024-10-28_15-26_Resnet18_p0.5'
 #              , 'Test_2024-10-28_15-27_Resnet18_p0.6'
-            #  "Test_2024-10-28_15-32_Resnet18_p0.7"
-            #    ]
+#              , "Test_2024-10-28_15-32_Resnet18_p0.7"
+#                ]
 # ===========================================
 
 model_type = input("Input model type? (1: MLP/2: Resnet or VGG) : ")
@@ -50,35 +49,36 @@ model_name = 'FineTuning/best_model.pth'  #'local_pruned_model.pth' 'FineTuning/
 if model_type == '1':
     datatype = "mnist"
     # mnist test dataset
-    mnist_transform = transforms.Compose([
-                transforms.ToTensor(),   # transform : convert image to tensor. Normalized to 0~1
-                transforms.Normalize((0.1307,), (0.3081,))
-    ])
+    # mnist_transform = transforms.Compose([
+    #             transforms.ToTensor(),   # transform : convert image to tensor. Normalized to 0~1
+    #             transforms.Normalize((0.1307,), (0.3081,))
+    # ])
 
-    mnist_test = dsets.MNIST(root='MNIST_data/',
-                            train=False,
-                            transform=mnist_transform,
-                            download=True)
+    # mnist_test = dsets.MNIST(root='MNIST_data/',
+    #                         train=False,
+    #                         transform=mnist_transform,
+    #                         download=True)
 
-    batch_size = 100
-    testloader = DataLoader(mnist_test, batch_size= batch_size, shuffle=False, num_workers=0)
+    # batch_size = 100
+    # testloader = DataLoader(mnist_test, batch_size= batch_size, shuffle=False, num_workers=0)
 
 elif model_type == '2':
     datatype = "cifar10"
     # cifar10 test dataset
-    cifar10_transform = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2471, 0.2435, 0.2616))
-    ])
+    # cifar10_transform = transforms.Compose([
+    #             transforms.ToTensor(),
+    #             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2471, 0.2435, 0.2616))
+    # ])
 
-    cifar10_test = dsets.CIFAR10(root='dataset/',
-                            train=False,
-                            download=True,
-                            transform=cifar10_transform)
+    # cifar10_test = dsets.CIFAR10(root='dataset/',
+    #                         train=False,
+    #                         download=True,
+    #                         transform=cifar10_transform)
 
-    batch_size=200
-    testloader = DataLoader(cifar10_test, batch_size=batch_size, shuffle=False, num_workers=2) 
+    # batch_size=200
+    # testloader = DataLoader(cifar10_test, batch_size=batch_size, shuffle=False, num_workers=2) 
 
+_, testloader = myModule.set_dataloader(data_type=datatype)
 
 # iteration
 for folder_name in name_list:
@@ -101,7 +101,7 @@ for folder_name in name_list:
     analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model using aihwkit
 
     # Inference
-    t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e7, 1e8, 1e9]
+    t_inferences = [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e6, 1e7, 1e8, 1e9]
     n_reps = 10   # Number of inference repetitions.
     inf_model.hw_EvalModel(analog_model, testloader, t_inferences, n_reps)
 

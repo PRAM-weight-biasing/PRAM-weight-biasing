@@ -521,7 +521,7 @@ class InfModel(TrainModel):
         rpu_config.drift_compensation = None   # apply GDC or not
                 
         # set ideal io parameters
-        rpu_config.forward.is_perfect=True
+        # rpu_config.forward.is_perfect=True
         rpu_config.mapping.weight_scaling_omega = 1.0  # 넣으면 non-ideal io에서도 conversion success!!!
         
         
