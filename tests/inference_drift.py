@@ -31,14 +31,14 @@ dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
 # dir_name = os.getcwd() + '/Model/'
 
-name_list = ["pretrained-model"]
+# name_list = ["pretrained-model"]
 # name_list = ["MLP"]
-# name_list = ['Test_2024-10-28_15-15_Resnet18_p0.3'
-#              , 'Test_2024-10-28_15-22_Resnet18_p0.4'
-#              , 'Test_2024-10-28_15-26_Resnet18_p0.5'
-#              , 'Test_2024-10-28_15-27_Resnet18_p0.6'
-#              , "Test_2024-10-28_15-32_Resnet18_p0.7"
-#                ]
+name_list = [  'Test_2024-10-28_15-15_Resnet18_p0.3'
+             , 'Test_2024-10-28_15-22_Resnet18_p0.4'
+             , 'Test_2024-10-28_15-26_Resnet18_p0.5'
+             , 'Test_2024-10-28_15-27_Resnet18_p0.6'
+             , "Test_2024-10-28_15-32_Resnet18_p0.7"
+               ]
 # ===========================================
 
 model_type = input("Input model type? (1: MLP/2: Resnet or VGG) : ")
@@ -92,12 +92,12 @@ for folder_name in name_list:
     """ inference accuracy in sw """
     n_reps = 1   # Number of inference repetitions.
     inf_model = InfModel(model, datatype)
-    inf_model.sw_EvalModel(testloader, n_reps)
+    # inf_model.sw_EvalModel(testloader, n_reps)
 
 
     """ inference accuracy in hw (simulator) """
     # convert to aihwkit simulator
-    inf_model = InfModel(model=model, mode=datatype, g_list=[0.1905, 25])
+    inf_model = InfModel(model=model, mode=datatype) # g_list=[0.1905, 25]
     analog_model = inf_model.ConvertModel()  # convert s/w model to analog h/w model using aihwkit
 
     # Inference
