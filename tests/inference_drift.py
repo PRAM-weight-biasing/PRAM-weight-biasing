@@ -31,14 +31,14 @@ dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
 # dir_name = os.getcwd() + '/Model/'
 
-# name_list = ["pretrained-model"]
+name_list = ["pretrained-model"]
 # name_list = ["MLP"]
-name_list = [  'Test_2024-10-28_15-15_Resnet18_p0.3'
-             , 'Test_2024-10-28_15-22_Resnet18_p0.4'
-             , 'Test_2024-10-28_15-26_Resnet18_p0.5'
-             , 'Test_2024-10-28_15-27_Resnet18_p0.6'
-             , "Test_2024-10-28_15-32_Resnet18_p0.7"
-               ]
+# name_list = [  'Test_2024-10-28_15-15_Resnet18_p0.3'
+#              , 'Test_2024-10-28_15-22_Resnet18_p0.4'
+#              , 'Test_2024-10-28_15-26_Resnet18_p0.5'
+#              , 'Test_2024-10-28_15-27_Resnet18_p0.6'
+#              , "Test_2024-10-28_15-32_Resnet18_p0.7"
+#                ]
 # ===========================================
 
 model_type = input("Input model type? (1: MLP/2: Resnet or VGG) : ")
