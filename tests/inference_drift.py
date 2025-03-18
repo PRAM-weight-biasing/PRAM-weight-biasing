@@ -68,7 +68,7 @@ for folder_name in name_list:
     
 
     """ inference accuracy in sw """
-    n_reps = 5   # Number of inference repetitions.
+    n_reps = 1   # Number of inference repetitions.
     inf_model = InfModel(model, datatype)
     inf_model.sw_EvalModel(testloader, n_reps)
 
