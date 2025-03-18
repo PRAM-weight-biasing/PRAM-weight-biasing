@@ -490,7 +490,7 @@ class PruneModel():
                 
                 
 class InfModel(TrainModel):
-    def __init__(self, model, mode: str, g_list: Optional[list] = None):
+    def __init__(self, model, mode: str, g_list: Optional[list] = None, noise_list: Optional[list]=None):
         # super().__init__()
         self.model = model
         self.eval_fn = self.get_eval_function(mode)
@@ -500,6 +500,9 @@ class InfModel(TrainModel):
         self.gmin = g_list[0]
         self.gmax = g_list[1]
         
+        noise_list = [None, None] if noise_list is None else noise_list
+        self.pgm_noise = noise_list[0]
+        self.read_noise = noise_list[1]
         
     def get_eval_function(self, mode):
         # Define a dictionary mapping modes to evaluation functions
@@ -514,36 +517,43 @@ class InfModel(TrainModel):
         return eval_function_map[mode]
         
         
-    def SetConfig(self) :
+    def SetConfig(self, gdc:bool, ideal_io:bool) :
         rpu_config = InferenceRPUConfig()
         rpu_config.device = PCMPresetUnitCell()      # change to paired PCM devices (Gp-Gm)
-        rpu_config.noise_model = TestNoiseModel(g_max=self.gmax, g_min=self.gmin)  # customized noise model
-        # rpu_config.drift_compensation = None   # apply GDC or not
-                
-        # set ideal io parameters
-        # rpu_config.forward.is_perfect=True
+        rpu_config.noise_model = TestNoiseModel(
+            g_max=self.gmax, 
+            g_min=self.gmin, 
+            prog_noise_scale=self.pgm_noise, 
+            read_noise_scale=self.read_noise, 
+            )  # customized noise model
         rpu_config.mapping.weight_scaling_omega = 1.0  # 넣으면 non-ideal io에서도 conversion success!!!
         
+        # global drift compensation
+        if gdc == True: pass
+        elif gdc == False:
+            rpu_config.drift_compensation = None   # apply GDC or not
+            
+        # ideal io
+        if ideal_io == True:
+            rpu_config.forward.is_perfect=True     # io parameters
+        elif ideal_io == False: pass
+
         
         """ Weight clipping & modifier parameter """
         # rpu_config.modifier.type = WeightModifierType.ADD_NORMAL  # Fwd/bwd weight noise.
         # rpu_config.modifier.std_dev = 0.1
-        # rpu_config.modifier.pdrop = 0.05  
+        # rpu_config.modifier.pdrop = 0.05   # Drop connect.
         # rpu_config.forward.out_res = -1.0  # Turn off (output) ADC discretization.
         # rpu_config.forward.w_noise_type = WeightNoiseType.ADDITIVE_CONSTANT
         # rpu_config.forward.w_noise = 0.02  # Short-term w-noise.
-
         # rpu_config.clip.type = WeightClipType.FIXED_VALUE
         # rpu_config.clip.fixed_value = 1.0
-        # rpu_config.modifier.pdrop = 0.03  # Drop connect.
-        # rpu_config.modifier.type = WeightModifierType.ADD_NORMAL  # Fwd/bwd weight noise.
-        # rpu_config.modifier.std_dev = 0.1
         # rpu_config.modifier.rel_to_actual_wmax = True 
         
         return rpu_config
     
-    def ConvertModel(self):
-        pcm_config = self.SetConfig()
+    def ConvertModel(self, gdc:bool, ideal_io:bool):
+        pcm_config = self.SetConfig(gdc=gdc, ideal_io=ideal_io)
         analog_model = convert_to_analog(self.model, pcm_config)
         
         return analog_model
@@ -599,7 +609,7 @@ class InfModel(TrainModel):
                 
             return total, test_accuracy
         
-    def semitrain_cifar10(self, model, test_loader) -> float:
+    def __semitrain_cifar10(self, model, test_loader) -> float:
         # Move model to the correct device
         model.to(self.device)
         
