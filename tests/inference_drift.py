@@ -28,11 +28,11 @@ start = time.time()
 # tracelog.start_trace()
 
 dir_name = os.getcwd() + '/TestRun/'
-# ===========================================
 # dir_name = os.getcwd() + '/Model/'
+# ===========================================
 
-name_list = ["vanilla-Resnet18"]
-# name_list = ["vinilla-MLP"]
+# name_list = ["vanilla-Resnet18"]
+# name_list = ["vanilla-MLP"]
 name_list = [ 'vanilla-Resnet18'
              , 'Test_2024-10-28_15-15_Resnet18_p0.3'
              , 'Test_2024-10-28_15-22_Resnet18_p0.4'
@@ -43,7 +43,6 @@ name_list = [ 'vanilla-Resnet18'
 # ===========================================
 
 model_type = input("Input model type? (1: MLP/2: Resnet or VGG) : ")
-# print(name_list)
 model_name = 'FineTuning/best_model.pth'  #'local_pruned_model.pth' 'FineTuning/best_model.pth'
 
 # set test dataloader
