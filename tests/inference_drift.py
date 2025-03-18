@@ -87,7 +87,7 @@ for folder_name in name_list:
     # Inference
     t_inferences = [1,                         # 1 sec
                     60,                        # 1 min
-                    100.0,
+                    100,
                     60 * 60,                   # 1 hour
                     24 * 60 * 60,              # 1 day
                     30 * 24 * 60 * 60,         # 1 month
