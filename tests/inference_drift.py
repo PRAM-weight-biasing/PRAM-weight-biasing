@@ -31,26 +31,34 @@ dir_name = os.getcwd() + '/TestRun/'
 # dir_name = os.getcwd() + '/Model/'
 # ===========================================
 
-# name_list = ["vanilla-Resnet18"]
 # name_list = ["vanilla-MLP"]
-name_list = [ 'vanilla-Resnet18'
-             , 'Test_2024-10-28_15-15_Resnet18_p0.3'
-             , 'Test_2024-10-28_15-22_Resnet18_p0.4'
-             , 'Test_2024-10-28_15-26_Resnet18_p0.5'
-             , 'Test_2024-10-28_15-27_Resnet18_p0.6'
-             , 'Test_2024-10-28_15-32_Resnet18_p0.7'
+name_list = [ 
+             'vanilla-Resnet18',
+             'Test_2024-10-28_15-15_Resnet18_p0.3',
+             'Test_2024-10-28_15-22_Resnet18_p0.4',
+             'Test_2024-10-28_15-26_Resnet18_p0.5',
+             'Test_2024-10-28_15-27_Resnet18_p0.6',
+             'Test_2024-10-28_15-32_Resnet18_p0.7',
                ]
 # ===========================================
 
-model_type = input("Input model type? (1: MLP/2: Resnet or VGG) : ")
-model_name = 'FineTuning/best_model.pth'  #'local_pruned_model.pth' 'FineTuning/best_model.pth'
+model_type = input("Input model type? (1: MLP / 2: Resnet18) : ")
+imported_model = input("Input model type? (1: Pruned /2: Retrained) : ")
+
+if imported_model == '1':
+    model_name = 'local_pruned_model.pth'
+elif imported_model == '2':
+    model_name = 'FineTuning/best_model.pth'
+    
+print(f'imported model : {model_name}')
+# model_name = 'FineTuning/best_model.pth'  #'local_pruned_model.pth' 'FineTuning/best_model.pth'
 
 # set test dataloader
 if model_type == '1':
     datatype = "mnist"
 elif model_type == '2':
     datatype = "cifar10"
-   
+    
 _, testloader = myModule.set_dataloader(data_type=datatype)
 
 # iteration
@@ -69,16 +77,16 @@ for folder_name in name_list:
     """ inference accuracy in sw """
     n_reps = 1   # Number of inference repetitions.
     inf_model = InfModel(model, datatype)
-    inf_model.sw_EvalModel(testloader, n_reps)
+    # inf_model.sw_EvalModel(testloader, n_reps)
 
 
     """ inference accuracy in hw (simulator) """
     # simulation setting
+    ideal_io = False
     gdc = True
-    ideal_io = True
     g_list = None  # default = None  // [0.1905, 25] 
     noise_list = [0, 0]  # pgm, read noise scale respectively
-    print(f'--- GDC:{gdc}, Ideal-IO:{ideal_io}, G range={g_list}, noise={noise_list} ---')
+    print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
     
     inf_model = InfModel(model=model, mode=datatype, g_list=g_list, noise_list=noise_list)
     analog_model = inf_model.ConvertModel(gdc=gdc, ideal_io=ideal_io)  
