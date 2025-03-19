@@ -1,16 +1,9 @@
-import torch
-import random
 import os
 import time
 import datetime
-import numpy as np
+import torch
+import pandas as pd
 
-from torch.utils.data import DataLoader
-import torchvision.datasets as dsets
-from torchvision.transforms import ToTensor
-import torchvision.transforms as transforms
-
-from aihwkit.nn.conversion import convert_to_analog
 from Model.PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 # from Model.PyTorch_CIFAR10.cifar10_models.vgg import vgg16_bn
 
@@ -34,7 +27,7 @@ dir_name = os.getcwd() + '/TestRun/'
 # name_list = ["vanilla-MLP"]
 name_list = [ 
              'vanilla-Resnet18',
-             'Test_2024-10-28_15-15_Resnet18_p0.3',
+            #  'Test_2024-10-28_15-15_Resnet18_p0.3',
              'Test_2024-10-28_15-22_Resnet18_p0.4',
              'Test_2024-10-28_15-26_Resnet18_p0.5',
              'Test_2024-10-28_15-27_Resnet18_p0.6',
@@ -61,52 +54,67 @@ elif model_type == '2':
     
 _, testloader = myModule.set_dataloader(data_type=datatype)
 
-# iteration
-for folder_name in name_list:
-    print(f'folder : {folder_name}')
+# simulation setting
+ideal_io = True
+# gdc = True
+gdc_list = [True, False]
+g_list = None  # default = None  // [0.1905, 25] 
+noise_list = [0, 0]  # pgm, read noise scale respectively
+# print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
+
+def sim_iter(n_rep_sw: int, n_rep_hw: int) -> list :
     
-    """ load the model """
-    folder_path = dir_name + folder_name
-    if 'vanilla' in folder_name:
-         model = resnet18(pretrained=True)
-         # model = vgg16_bn(pretrained=True)
-    else:
-        model = torch.load(f'{folder_path}/{model_name}')
-    
+    all_results = []
+    # iteration
+    for folder_name in name_list:
+        print(f'\nfolder : {folder_name}')
+        
+        """ load the model """
+        folder_path = dir_name + folder_name
+        if 'vanilla' in folder_name:
+            model = resnet18(pretrained=True)
+        else:
+            model = torch.load(f'{folder_path}/{model_name}')
+        
 
-    """ inference accuracy in sw """
-    n_reps = 1   # Number of inference repetitions.
-    inf_model = InfModel(model, datatype)
-    # inf_model.sw_EvalModel(testloader, n_reps)
+        """ inference accuracy in sw """
+        inf_model = InfModel(model, datatype)
+        inf_model.sw_EvalModel(testloader, n_rep_sw)
 
 
-    """ inference accuracy in hw (simulator) """
-    # simulation setting
-    ideal_io = False
-    gdc = True
-    g_list = None  # default = None  // [0.1905, 25] 
-    noise_list = [0, 0]  # pgm, read noise scale respectively
+        """ inference accuracy in hw (simulator) """ 
+        inf_model = InfModel(model=model, mode=datatype, g_list=g_list, noise_list=noise_list)
+        analog_model = inf_model.ConvertModel(gdc=gdc, ideal_io=ideal_io)  
+
+        # Inference
+        t_inferences = [1,                         # 1 sec
+                        60,                        # 1 min
+                        100,
+                        60 * 60,                   # 1 hour
+                        24 * 60 * 60,              # 1 day
+                        30 * 24 * 60 * 60,         # 1 month
+                        12 * 30 * 24 * 60 * 60,    # 1 year
+                        36 * 30 * 24 * 60 * 60,    # 3 year
+                        1e9,
+                        ]
+        # [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e6, 1e7, 1e8, 1e9]
+        results = inf_model.hw_EvalModel(analog_model, testloader, t_inferences, n_rep_hw)
+        
+        for row in results:
+            all_results.append([folder_name] + row)
+
+        myModule.clear_memory()
+    return all_results
+
+n_rep_sw = 1   # Number of inference repetitions.
+n_rep_hw = 30  
+for gdc in gdc_list:
     print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
+    all_results = sim_iter(n_rep_sw, n_rep_hw)
     
-    inf_model = InfModel(model=model, mode=datatype, g_list=g_list, noise_list=noise_list)
-    analog_model = inf_model.ConvertModel(gdc=gdc, ideal_io=ideal_io)  
-
-    # Inference
-    t_inferences = [1,                         # 1 sec
-                    60,                        # 1 min
-                    100,
-                    60 * 60,                   # 1 hour
-                    24 * 60 * 60,              # 1 day
-                    30 * 24 * 60 * 60,         # 1 month
-                    12 * 30 * 24 * 60 * 60,    # 1 year
-                    36 * 30 * 24 * 60 * 60,    # 3 year
-                    1e9,
-                    ]
-    # [0.0, 10.0, 100.0, 1000.0, 3600.0, 10000.0, 86400.0, 1e6, 1e7, 1e8, 1e9]
-    n_reps = 30   # Number of inference repetitions.
-    inf_model.hw_EvalModel(analog_model, testloader, t_inferences, n_reps)
-
-    myModule.clear_memory()
+    df = pd.DataFrame(all_results, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
+    df.to_excel(f"evaluation_results_gdc_{gdc}.xlsx", index=False, engine='openpyxl')
+    print("엑셀 저장 완료: evaluation_results.xlsx\n")
 
 # tracing ends
 # tracelog.save_trace_results()
