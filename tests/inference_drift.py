@@ -56,8 +56,8 @@ _, testloader = myModule.set_dataloader(data_type=datatype)
 
 # simulation setting
 ideal_io = True
-gdc_list = [True, False]
-g_list = None  # default = None  // [0.1905, 25] 
+gdc_list = [False, True]
+g_list = None  # defau0lt = None  // [0.1905, 25] 
 noise_list = [0, 0]  # pgm, read noise scale respectively
 
 def sim_iter(n_rep_sw: int, n_rep_hw: int) -> list :
@@ -85,7 +85,8 @@ def sim_iter(n_rep_sw: int, n_rep_hw: int) -> list :
         analog_model = inf_model.ConvertModel(gdc=gdc, ideal_io=ideal_io)  
 
         # Inference
-        t_inferences = [1,                         # 1 sec
+        t_inferences = [
+                        1,                         # 1 sec
                         60,                        # 1 min
                         100,
                         60 * 60,                   # 1 hour
@@ -105,11 +106,11 @@ def sim_iter(n_rep_sw: int, n_rep_hw: int) -> list :
     return all_results
 
 # simulation
-n_rep_sw = 0   # Number of inference repetitions.
-n_rep_hw = 10  
+n_rep_sw = 1   # Number of inference repetitions.
+n_rep_hw = 30  
 
 for gdc in gdc_list:
-    print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
+    print(f'\n--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
     all_results = sim_iter(n_rep_sw, n_rep_hw)
     
     df = pd.DataFrame(all_results, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])

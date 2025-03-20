@@ -559,29 +559,60 @@ class InfModel(TrainModel):
         return analog_model
 
     def hw_EvalModel(self, analog_model, test_loader, t_inferences: list, n_reps: int) -> list :
+        """_summary_
+
+        Args:
+            analog_model (_type_): _description_
+            test_loader (_type_): _description_
+            t_inferences (list): _description_
+            n_reps (int): number of repetition in fixed analog model
+
+        Returns:
+            list: accuracy results
+        """
+        
         analog_model.to(self.device)
         analog_model.eval()
         
         inference_accuracy_values = torch.zeros((len(t_inferences), n_reps))
         results = []
-
+                
         for t_id, t in enumerate(t_inferences):
-            for i in range(n_reps):
+            for i in range(n_reps):              
+                # inference
                 analog_model.drift_analog_weights(t)
                 _, test_accuracy = self.eval_fn(analog_model, test_loader)
                 inference_accuracy_values[t_id, i] = test_accuracy
+                print("Accuracy:", test_accuracy)
                 
             mean_acc = inference_accuracy_values[t_id].mean().item()
             std_acc = inference_accuracy_values[t_id].std().item()
-            
+                        
             print(
                     f"Test set accuracy (%) at t={t}s: \t mean: {mean_acc:.6f}, \t std: {std_acc :.6f}"
                 )
-            # print(
-            #         f"Test set accuracy (%) at t={t}s: \t mean: {inference_accuracy_values[t_id].mean() :.6f}, \t std: {inference_accuracy_values[t_id].std() :.6f}"
-            #     )
             
             results.append([t, mean_acc, std_acc])
+            
+        return results
+    
+    def hw_EvalModel_single(self, analog_model, test_loader, t_inferences: list, n_reps: Optional[int]=1) -> list :
+        
+        analog_model.to(self.device)
+        analog_model.eval()
+        
+        inference_accuracy_values = torch.zeros((len(t_inferences), n_reps))
+        results = []
+                
+        for t_id, t in enumerate(t_inferences):
+            for i in range(n_reps):              
+                # inference
+                analog_model.drift_analog_weights(t)
+                _, test_accuracy = self.eval_fn(analog_model, test_loader)
+                inference_accuracy_values[t_id, i] = test_accuracy
+                # print("Accuracy:", test_accuracy)
+            
+            results.append([t, test_accuracy])
             
         return results
             
@@ -590,13 +621,17 @@ class InfModel(TrainModel):
         self.model.eval()
         
         inference_accuracy_values = torch.zeros(n_reps)
-
+        myModule.fix_seed()
+        
         for i in range(n_reps):
             _, test_accuracy = self.eval_fn(self.model, test_loader)
             inference_accuracy_values[i] = test_accuracy
+        
+        mean_acc = inference_accuracy_values.mean().item()
+        std_acc = inference_accuracy_values.std().item()
             
         print(
-                f"Test set accuracy (%) in s/w: \t mean: {inference_accuracy_values.mean() :.6f}, \t std: {inference_accuracy_values.std() :.6f}"
+                f"Test set accuracy (%) in s/w: \t mean: {mean_acc :.6f}, \t std: {std_acc :.6f}"
             )
             
     def __eval_cifar10(self, model, test_loader) -> float:
