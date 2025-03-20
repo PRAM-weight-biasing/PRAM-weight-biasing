@@ -1,6 +1,4 @@
 import os
-import time
-import datetime
 import torch
 import pandas as pd
 
@@ -11,10 +9,14 @@ from Model.PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 from network import InfModel
 import myModule
 
-### =============================================================
+"""
+inference tests over time
+
+"""
+
 # Setting
-# myModule.fix_seed()
-start = time.time()
+myModule.start_timer()
+myModule.fix_seed()
 
 # trace the imported files in aihwkit folder
 # tracelog = myModule.trace()
@@ -22,19 +24,18 @@ start = time.time()
 
 dir_name = os.getcwd() + '/TestRun/'
 # dir_name = os.getcwd() + '/Model/'
-# ===========================================
 
 # name_list = ["vanilla-MLP"]
 name_list = [ 
              'vanilla-Resnet18',
-            #  'Test_2024-10-28_15-15_Resnet18_p0.3',
+             'Test_2024-10-28_15-15_Resnet18_p0.3',
              'Test_2024-10-28_15-22_Resnet18_p0.4',
              'Test_2024-10-28_15-26_Resnet18_p0.5',
              'Test_2024-10-28_15-27_Resnet18_p0.6',
              'Test_2024-10-28_15-32_Resnet18_p0.7',
                ]
-# ===========================================
 
+# load the model
 model_type = input("Input model type? (1: MLP / 2: Resnet18) : ")
 imported_model = input("Input model type? (1: Pruned /2: Retrained) : ")
 
@@ -44,7 +45,6 @@ elif imported_model == '2':
     model_name = 'FineTuning/best_model.pth'
     
 print(f'imported model : {model_name}')
-# model_name = 'FineTuning/best_model.pth'  #'local_pruned_model.pth' 'FineTuning/best_model.pth'
 
 # set test dataloader
 if model_type == '1':
@@ -56,11 +56,9 @@ _, testloader = myModule.set_dataloader(data_type=datatype)
 
 # simulation setting
 ideal_io = True
-# gdc = True
 gdc_list = [True, False]
 g_list = None  # default = None  // [0.1905, 25] 
 noise_list = [0, 0]  # pgm, read noise scale respectively
-# print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
 
 def sim_iter(n_rep_sw: int, n_rep_hw: int) -> list :
     
@@ -106,22 +104,19 @@ def sim_iter(n_rep_sw: int, n_rep_hw: int) -> list :
         myModule.clear_memory()
     return all_results
 
-n_rep_sw = 1   # Number of inference repetitions.
+# simulation
+n_rep_sw = 0   # Number of inference repetitions.
 n_rep_hw = 30  
+
 for gdc in gdc_list:
     print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
     all_results = sim_iter(n_rep_sw, n_rep_hw)
     
     df = pd.DataFrame(all_results, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
     df.to_excel(f"evaluation_results_gdc_{gdc}.xlsx", index=False, engine='openpyxl')
-    print("엑셀 저장 완료: evaluation_results.xlsx\n")
+    print(f"! Save the file: evaluation_results_gdc_{gdc}.xlsx\n")
 
 # tracing ends
 # tracelog.save_trace_results()
 
-# ------------------------------------------------------------------
-# measure run-time
-sec = time.time()-start
-times = str(datetime.timedelta(seconds=sec)) 
-short = times.split(".")[0]   # until sec.
-print(f"\nruntime : {short} sec\n")
+myModule.end_timer()
