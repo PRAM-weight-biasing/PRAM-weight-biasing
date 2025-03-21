@@ -52,7 +52,7 @@ elif model_type == '2':
 _, testloader = myModule.set_dataloader(data_type=datatype)
 
 # simulation setting
-ideal_io = False
+ideal_io = True
 gdc_list = [True, False]
 g_list = None  # default = None  // [0.1905, 25] 
 noise_list = [0, 0]  # pgm, read noise scale respectively
