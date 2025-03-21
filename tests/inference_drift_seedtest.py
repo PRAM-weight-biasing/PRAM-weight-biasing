@@ -2,6 +2,7 @@ import os
 import torch
 import pandas as pd
 import numpy as np
+from tqdm import tqdm
 
 from Model.PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 
@@ -51,7 +52,7 @@ elif model_type == '2':
 _, testloader = myModule.set_dataloader(data_type=datatype)
 
 # simulation setting
-ideal_io = True
+ideal_io = False
 gdc_list = [True, False]
 g_list = None  # default = None  // [0.1905, 25] 
 noise_list = [0, 0]  # pgm, read noise scale respectively
@@ -72,9 +73,11 @@ def sim_iter(n_rep_sw: int, n_rep_hw: int) -> list :
         
 
         """ inference accuracy in hw (simulator) """ 
-        results = []
+        # results = []
         rep_results = []  # Store results for each repetition
-        for rep in range(n_rep_hw):
+        # for rep in range(n_rep_hw):
+        for rep in tqdm(range(n_rep_hw), desc='Inference Progress', 
+                bar_format='{l_bar}{bar:30}{r_bar}{bar:-10b}'):
             # Set different seed for each repetition
             current_seed = np.random.randint(0, 99999)  # 0에서 99999 사이의 랜덤 정수
             # print("Generated Seed:", current_seed)
@@ -97,7 +100,8 @@ def sim_iter(n_rep_sw: int, n_rep_hw: int) -> list :
                             ]
             single_result = inf_model.hw_EvalModel_single(analog_model, testloader, t_inferences, 1)
             rep_results.append(single_result)
-            print(f"Rep {rep} done")
+            # print(f"Rep {rep+1} done")
+            myModule.clear_memory()
         
         # Calculate statistics across repetitions
         for t_idx in range(len(t_inferences)):
@@ -107,12 +111,12 @@ def sim_iter(n_rep_sw: int, n_rep_hw: int) -> list :
             mean_acc = np.mean(accuracies)
             std_acc = np.std(accuracies)
             
-            results.append([folder_name, t, mean_acc, std_acc])
+            all_results.append([folder_name, t, mean_acc, std_acc])
             print(f"Time {t}s - Mean: {mean_acc:.2f}%, Std: {std_acc:.2f}%")
 
 
         myModule.clear_memory()
-    return results
+    return all_results
 
 # simulation
 n_rep_sw = 0   # Number of inference repetitions.

@@ -145,9 +145,9 @@ class TestNoiseModel(BaseNoiseModel):
         mu_gst225 = -0.1841* (g_relative**3) + 0.4204* (g_relative**2) - 0.3134 * g_relative + 0.08465
         mu_msr = 0.0513*exp(-4.9751*g_relative**0.5803) + 0.0069
         
-        mu_log_test1 = (-0.0155 * log((g_relative**0.5)+0.00762) + 0.0244)
-        mu_log_test2 = (-0.0155 * log((g_relative**1.5)+0.00762) + 0.0244)
-        mu_log_test3 = (-0.0757 * g_relative + 0.1)
+        mu_test1 = (-0.0155 * log((g_relative**0.5)+0.00762) + 0.0244)
+        mu_test2 = (-0.0155 * log((g_relative**1.5)+0.00762) + 0.0244)
+        mu_test3 = (-0.0757 * g_relative + 0.1)
         
         mu_drift = mu_log_rev # final
         
