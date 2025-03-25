@@ -247,7 +247,7 @@ class TrainModel():
         plt.ylabel('Accuracy')
         
         plt.tight_layout()
-        plt.savefig(f'{folder_path}/graph.png')
+        plt.savefig(f'{folder_path}/ChartPerEpoch.png')
         plt.clf()
         
     def cifar_resnet(self, learning_rate: float, num_epochs: int, folder_path) -> None:
@@ -341,21 +341,6 @@ class TrainModel():
             test_loss /= len(test_loader)
                 
             return test_loss, test_accuracy
-
-    def __LossFunction(self, loss_type: str, y_true, y_pred) -> None:
-        mse =  nn.MSELoss()(y_true, y_pred)
-        smoothL1 = nn.SmoothL1Loss()(y_true, y_pred)
-        crossEntropy = torch.nn.CrossEntropyLoss()(y_true, y_pred)
-
-        if loss_type == 'MSE':
-            lossfunc = mse
-        elif loss_type == "SmoothL1":
-            lossfunc = smoothL1
-        elif loss_type == "CE":
-            lossfunc = crossEntropy
-        else: None
-
-        return lossfunc
     
 
 class Vis_Model():

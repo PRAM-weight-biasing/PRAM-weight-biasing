@@ -19,12 +19,12 @@ import myModule
 
 # Setting
 myModule.fix_seed()
-start = time.time()
+myModule.start_timer()
 
 # Load model
 dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
-folder_name = "Test_2024-10-28_15-15_Resnet18_p0.3" 
+folder_name = 'Test_2024-10-28_15-15_Resnet18_p0.3'
 # ===========================================
 folder_path = dir_name + folder_name
 model_name = 'local_pruned_model.pth'
@@ -41,16 +41,23 @@ inf_model.sw_EvalModel(testloader, n_reps=1)
 
 
 """ Training """
+# lr =5e-5
+lr_list = [5e-4, 5e-5, 1e-5, 1e-6]    
 num_epochs = 30
-lr = 1e-4
 
-new_folder = folder_path + '/FineTuning'
-os.makedirs(new_folder, exist_ok=True)
+# iterate over learning rates
+for lr in lr_list:
+    new_folder = folder_path + f'/FT_{lr}_{num_epochs}'
+    os.makedirs(new_folder, exist_ok=True)
 
-retrain_model = TrainModel(trainloader, testloader, pruned_model)
-retrain_model.cifar_resnet(learning_rate=lr, num_epochs=num_epochs, folder_path=new_folder)
+    retrain_model = TrainModel(trainloader, testloader, pruned_model)
+    retrain_model.cifar_resnet(learning_rate=lr, num_epochs=num_epochs, folder_path=new_folder)
 
 
-""" Visualize """
-best_model = Vis_Model('best_model.pth', new_folder)
-best_model.Vis_weight()
+    """ Visualize """
+    best_model = Vis_Model('best_model.pth', new_folder)
+    # best_model.Vis_weight()
+    
+    myModule.clear_memory()
+
+myModule.end_timer()

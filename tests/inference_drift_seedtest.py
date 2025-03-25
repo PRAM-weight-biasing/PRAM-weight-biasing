@@ -24,7 +24,7 @@ dir_name = os.getcwd() + '/TestRun/'
 
 # name_list = ["vanilla-MLP"]
 name_list = [ 
-             'vanilla-Resnet18',
+            #  'vanilla-Resnet18',
              'Test_2024-10-28_15-15_Resnet18_p0.3',
              'Test_2024-10-28_15-22_Resnet18_p0.4',
              'Test_2024-10-28_15-26_Resnet18_p0.5',
@@ -34,12 +34,14 @@ name_list = [
 
 # load the model
 model_type = input("Input model type? (1: MLP / 2: Resnet18) : ")
-imported_model = input("Input model type? (1: Pruned /2: Retrained) : ")
+imported_model = input("Input model type? (1: Pruned /2: Retrained / 3: Test) : ")
 
 if imported_model == '1':
     model_name = 'local_pruned_model.pth'
 elif imported_model == '2':
     model_name = 'FineTuning/best_model.pth'
+elif imported_model == '3':
+    model_name = 'FT_1e-06/best_model.pth'
     
 print(f'imported model : {model_name}')
 
