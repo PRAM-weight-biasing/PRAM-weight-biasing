@@ -149,6 +149,9 @@ class TestNoiseModel(BaseNoiseModel):
         mu_test2 = (-0.0155 * log((g_relative**1.5)+0.00762) + 0.0244)
         mu_test3 = (-0.0757 * g_relative + 0.1)
         
+        mu_test4 = (-0.0155 * log((g_relative*2)+0.00762) + 0.0244).clamp(min=0.0244)
+        mu_test5 = (-0.0155 * log((g_relative*5)+0.00762) + 0.0244).clamp(min=0.0244)
+        
         mu_drift = mu_log_rev # final
         
         """ sig_drift """
