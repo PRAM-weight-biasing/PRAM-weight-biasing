@@ -17,19 +17,19 @@ inference tests over time
 
 # Setting
 myModule.start_timer()
-# myModule.fix_seed()
+myModule.fix_seed()
 
 dir_name = os.getcwd() + '/TestRun/'
 # dir_name = os.getcwd() + '/Model/'
 
 # name_list = ["vanilla-MLP"]
 name_list = [ 
-            #  'vanilla-Resnet18',
-             'Test_2024-10-28_15-15_Resnet18_p0.3',
-             'Test_2024-10-28_15-22_Resnet18_p0.4',
-             'Test_2024-10-28_15-26_Resnet18_p0.5',
-             'Test_2024-10-28_15-27_Resnet18_p0.6',
-             'Test_2024-10-28_15-32_Resnet18_p0.7',
+             'vanilla-Resnet18',
+            #  'Test_2024-10-28_15-15_Resnet18_p0.3',
+            #  'Test_2024-10-28_15-22_Resnet18_p0.4',
+            #  'Test_2024-10-28_15-26_Resnet18_p0.5',
+            #  'Test_2024-10-28_15-27_Resnet18_p0.6',
+            #  'Test_2024-10-28_15-32_Resnet18_p0.7',
                ]
 
 # load the model
@@ -55,7 +55,7 @@ _, testloader = myModule.set_dataloader(data_type=datatype)
 
 # simulation setting
 ideal_io = True
-gdc_list = [True, False]
+gdc_list = [False]
 g_list = None  # default = None  // [0.1905, 25] 
 noise_list = [0, 0]  # pgm, read noise scale respectively
 
@@ -70,6 +70,7 @@ def sim_iter(n_rep_sw: int, n_rep_hw: int) -> list :
         folder_path = dir_name + folder_name
         if 'vanilla' in folder_name:
             model = resnet18(pretrained=True)
+            print('Vanilla model loaded')
         else:
             model = torch.load(f'{folder_path}/{model_name}')
         
