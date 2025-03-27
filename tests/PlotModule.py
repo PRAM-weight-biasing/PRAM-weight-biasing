@@ -212,3 +212,66 @@ def plot_weight_dist_all(model):
     # 5. 그래프 표시
     plt.tight_layout()
     plt.show()
+
+def plot_weight_module(model, module_name):
+    for name, param in model.named_parameters():
+        if 'weight' in name and len(param.size()) > 1:  # Consider only convolutional and fully connected layers
+            if len(param.size()) == 4:  # Convolutional layers
+                if module_name in name :
+                    weights = param.data.cpu().numpy().flatten()
+                    plt.hist(weights, bins=150, alpha=0.7, label=f'{name}')
+            
+
+    plt.title('Layer 1.0 Convolutional weights (After)')
+    plt.xlabel('Weight value')
+    plt.ylabel('Frequency')
+    plt.legend(loc='upper left', bbox_to_anchor=(1.0,1.0))
+    plt.grid(True, axis='y')
+    # plt.yscale('log')
+    plt.show()
+    
+def plot_weight_comparison(model1, model2, layer_name, title1="Vanilla", title2="Finetuned"):
+    """Compare weight distributions of same layer from two models with synchronized y-axes."""
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    plt.rcParams.update({'font.size': 12})
+    
+    # Get weights for both models
+    weights1, weights2 = None, None
+    
+    # Get weights from first model
+    for name, param in model1.named_parameters():
+        if layer_name in name:
+            weights1 = param.data.cpu().numpy().flatten()
+            
+    # Get weights from second model
+    for name, param in model2.named_parameters():
+        if layer_name in name:
+            weights2 = param.data.cpu().numpy().flatten()
+    
+    # Plot histograms and get their max frequencies
+    n1, _, _ = ax1.hist(weights1, bins=150, alpha=0.7)
+    n2, _, _ = ax2.hist(weights2, bins=150, alpha=0.7)
+    
+    # Set common y limit
+    ymax = max(n1.max(), n2.max())
+    ax1.set_ylim(0, ymax * 1.1)  # Add 10% padding
+    ax2.set_ylim(0, ymax * 1.1)
+    
+    # Sync y-axis ticks
+    yticks = ax1.get_yticks()
+    ax2.set_yticks(yticks)
+    
+    # Set titles and labels
+    ax1.set_title(f'{title1} - {layer_name}')
+    ax1.set_xlabel('Weight value')
+    ax1.set_ylabel('Frequency')
+    ax1.grid(True, axis='y')
+    
+    ax2.set_title(f'{title2} - {layer_name}')
+    ax2.set_xlabel('Weight value')
+    ax2.set_ylabel('Frequency')
+    ax2.grid(True, axis='y')
+    
+    plt.suptitle('Weight Distribution Comparison', fontsize=16)
+    # plt.tight_layout()
+    plt.show()
