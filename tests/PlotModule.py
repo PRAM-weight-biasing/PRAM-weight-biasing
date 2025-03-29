@@ -1,6 +1,7 @@
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.io
 from network import InfModel
 
 
@@ -104,7 +105,8 @@ def convert_weights_to_conductance(model, rpu_config):
 
     min_gp_fc, min_gm_fc = None, None
     min_gp_conv, min_gm_conv = None, None
-
+    
+    model = model.to("cpu")   # remove if error occurs
     for name, param in model.named_parameters():
         if "weight" in name and len(param.size()) > 1:  # Conv / FC layer만 처리
             weights = param.data.cpu()
@@ -231,7 +233,7 @@ def plot_weight_module(model, module_name):
     plt.show()
     
 def plot_weight_comparison(model1, model2, layer_name, title1="Vanilla", title2="Finetuned"):
-    """Compare weight distributions of same layer from two models with synchronized y-axes."""
+    """Compare weight distributions of same layer from two models """
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
     plt.rcParams.update({'font.size': 12})
     
@@ -252,14 +254,12 @@ def plot_weight_comparison(model1, model2, layer_name, title1="Vanilla", title2=
     n1, _, _ = ax1.hist(weights1, bins=150, alpha=0.7)
     n2, _, _ = ax2.hist(weights2, bins=150, alpha=0.7)
     
-    # Set common y limit
-    ymax = max(n1.max(), n2.max())
-    ax1.set_ylim(0, ymax * 1.1)  # Add 10% padding
-    ax2.set_ylim(0, ymax * 1.1)
+    # Determine the max y-axis limit
+    max_freq = max(n1.max(), n2.max())
     
-    # Sync y-axis ticks
-    yticks = ax1.get_yticks()
-    ax2.set_yticks(yticks)
+    # Set y-axis limits to be the same
+    ax1.set_ylim(0, max_freq * 1.1)  # Adding 10% padding
+    ax2.set_ylim(0, max_freq * 1.1)
     
     # Set titles and labels
     ax1.set_title(f'{title1} - {layer_name}')
@@ -274,4 +274,131 @@ def plot_weight_comparison(model1, model2, layer_name, title1="Vanilla", title2=
     
     plt.suptitle('Weight Distribution Comparison', fontsize=16)
     # plt.tight_layout()
+    plt.show()
+    
+def save_weights_for_matlab(model, layer_name, filename="weights.mat"):
+    """Extracts weights from a specific layer and saves them in a .mat file for MATLAB."""
+    weights = None
+    for name, param in model.named_parameters():
+        if layer_name in name:
+            weights = param.data.cpu().numpy().flatten()  # 1D 배열로 변환
+            break
+    
+    if weights is not None:
+        scipy.io.savemat(filename, {"weights": weights})
+        print(f"Saved weights to {filename}")
+    else:
+        print("Layer not found!")
+        
+
+def compute_total_drift_error(model, dataset, gdc=True, ideal_io=True, t_seconds=3600*24*7):
+    """
+    전체 모델 weight를 analog로 변환하고,
+    드리프트를 적용한 후 초기 conductance와의 차이를 계산합니다.
+    
+    Usage:
+        t_seconds = 9.33e7
+        drift_error = compute_total_drift_error(finetuned_model, dataset="cifar10", t_seconds=t_seconds)
+        print(f"Total drift error after {t_seconds}sec: {drift_error:.4f}")
+    """
+    
+    inf_model = InfModel(model, dataset, noise_list=[0,0])
+    rpu_config = inf_model.SetConfig(gdc=gdc, ideal_io=ideal_io)
+    analog_model = inf_model.ConvertModel(gdc=gdc, ideal_io=ideal_io)
+
+    noise_model = rpu_config.noise_model
+    g_converter = noise_model.g_converter
+
+    total_drift_error = 0.0
+
+    for name, param in analog_model.named_parameters():
+        if "weight" in name and len(param.size()) > 1:
+            weights = param.data.cpu()
+
+            # Conductance 변환
+            (gp, gm), _ = g_converter.convert_to_conductances(weights)
+
+            # Programming noise (optional, realistic)
+            gp_prog = noise_model.apply_programming_noise_to_conductance(gp)
+            gm_prog = noise_model.apply_programming_noise_to_conductance(gm)
+            # gp_prog = gp
+            # gm_prog = gm
+
+            # Drift coefficient 생성
+            nu_gp = noise_model.generate_drift_coefficients(gp_prog)
+            nu_gm = noise_model.generate_drift_coefficients(gm_prog)
+
+            # Drift 적용
+            gp_drifted = noise_model.apply_drift_noise_to_conductance(gp_prog, nu_gp, t_seconds)
+            gm_drifted = noise_model.apply_drift_noise_to_conductance(gm_prog, nu_gm, t_seconds)
+
+
+            # ΔG 계산
+            g_init = gp_prog - gm_prog
+            g_drifted = gp_drifted - gm_drifted
+            drift_error = torch.sum(torch.abs(g_init - g_drifted)).item()
+            total_drift_error += drift_error
+
+    return total_drift_error
+
+
+def compute_and_plot_layerwise_drift(model, dataset, gdc=True, ideal_io=True, t_seconds=3600*24*7):
+    """_summary_
+
+    Usage:
+        compute_and_plot_layerwise_drift(pruned_model, dataset="cifar10", t_seconds=100)
+    """
+    inf_model = InfModel(model, dataset, noise_list=[0, 0])
+    rpu_config = inf_model.SetConfig(gdc=gdc, ideal_io=ideal_io)
+    analog_model = inf_model.ConvertModel(gdc=gdc, ideal_io=ideal_io)
+
+    noise_model = rpu_config.noise_model
+    g_converter = noise_model.g_converter
+
+    layerwise_delta_g = {}
+    stats = []
+
+    for name, param in analog_model.named_parameters():
+        if "weight" in name and len(param.size()) > 1:
+            weights = param.data.cpu()
+
+            (gp, gm), _ = g_converter.convert_to_conductances(weights)
+
+            gp_prog = noise_model.apply_programming_noise_to_conductance(gp)
+            gm_prog = noise_model.apply_programming_noise_to_conductance(gm)
+
+            nu_gp = noise_model.generate_drift_coefficients(gp_prog)
+            nu_gm = noise_model.generate_drift_coefficients(gm_prog)
+
+            gp_drifted = noise_model.apply_drift_noise_to_conductance(gp_prog, nu_gp, t_seconds)
+            gm_drifted = noise_model.apply_drift_noise_to_conductance(gm_prog, nu_gm, t_seconds)
+
+            g_init = gp_prog - gm_prog
+            g_drifted = gp_drifted - gm_drifted
+            delta_g = torch.abs(g_init - g_drifted).flatten().numpy()
+
+            layerwise_delta_g[name] = delta_g
+            stats.append((name, delta_g.mean(), delta_g.std()))
+
+    # ==== 출력: 통계 요약 ====
+    print(f"{'Layer':<40} | {'ΔG Mean':>10} | {'ΔG Std':>10}")
+    print("-"*65)
+    for name, mean, std in stats:
+        print(f"{name:<40} | {mean:10.5f} | {std:10.5f}")
+
+    # ==== 시각화: 레이어별 ΔG 분포 ====
+    num_layers = len(layerwise_delta_g)
+    cols = 2
+    rows = (num_layers + 1) // cols
+
+    plt.figure(figsize=(cols * 6, rows * 4))
+    for i, (name, delta_g) in enumerate(layerwise_delta_g.items()):
+        plt.subplot(rows, cols, i + 1)
+        plt.hist(delta_g, bins=150, color='tomato', alpha=0.8)
+        plt.title(f"ΔG Distribution\n{name}")
+        plt.xlabel("|ΔG|")
+        plt.ylabel("Frequency")
+        plt.grid(True)
+
+    plt.tight_layout()
     plt.show()
