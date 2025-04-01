@@ -8,7 +8,6 @@ import gc
 import pandas as pd
 import sys
 import time
-import datetime
 from torch.utils.data import DataLoader
 import torchvision.datasets as dsets
 from torchvision.transforms import ToTensor
@@ -172,14 +171,14 @@ def set_dataloader(data_type: str):
 def start_timer():
     global start_time
     start_time = time.time()
-    start_time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    start_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"\n[Start] Script execution started at {start_time_str}")
 
 def end_timer():
     sec = time.time() - start_time
     times = str(datetime.timedelta(seconds=sec))
     short = times.split(".")[0]  # until sec.
-    end_time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    end_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[End] Script execution finished at {end_time_str}, runtime: {short} sec\n")
 
  
