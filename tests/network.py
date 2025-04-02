@@ -249,17 +249,26 @@ class TrainModel():
         plt.tight_layout()
         plt.savefig(f'{folder_path}/ChartPerEpoch.png')
         plt.clf()
-        
+    
+    @staticmethod
+    def freeze_batchnorm(module):
+        if isinstance(module, torch.nn.modules.batchnorm._BatchNorm):
+            module.eval()  # prevent BN stat updates
+            module.weight.requires_grad = False
+            module.bias.requires_grad = False
+    
     def cifar_resnet(self, learning_rate: float, num_epochs: int, folder_path) -> None:
         for _, param in self.model.named_parameters():
             param.requires_grad = True  # train all Conv & FC layers
-            # print(name, param.requires_grad)
-                        
+                                    
         # Define the loss function and optimizer
         loss_fn = nn.CrossEntropyLoss()
         optimizer = Adam(self.model.parameters(), lr= learning_rate, weight_decay=5e-4)
-        # scheduler = lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
-        scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=5)  # 잘 안되면 이걸로
+        scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=5)  
+        
+        # Data loader
+        from myModule import set_dataloader
+        trainloader, testloader = set_dataloader(data_type='cifar10')
         
         # Initialize parameters
         best_loss = float('inf')  # Initialize with a high number
@@ -271,13 +280,14 @@ class TrainModel():
         
         # Train and test
         self.model.train()
+        self.model.apply(self.freeze_batchnorm)  # fix batchnorm layers
         
         for epoch in range(num_epochs):
             
             # Train
             total_train_loss = 0
 
-            for batch_idx, (inputs, targets) in enumerate(self.train_dataloader):
+            for batch_idx, (inputs, targets) in enumerate(trainloader):  # debug ; self.train_dataloader
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
                 outputs = self.model(inputs)
                 loss = loss_fn(outputs, targets)
@@ -287,12 +297,12 @@ class TrainModel():
                 loss.backward()         # calculate gradient
                 optimizer.step()        # update weights : w -= lr * w.grad
                 
-            total_train_loss /= len(self.train_dataloader)
+            total_train_loss /= len(trainloader) # debug ; self.train_dataloader
             train_loss_list.append(total_train_loss)
             
             # Test
-            # self.model.eval()
-            test_loss, test_acc = self.eval_cifar10(self.model, self.test_dataloader)
+            self.model.eval()
+            test_loss, test_acc = self.eval_cifar10(self.model, testloader) # debug ; self.test_dataloade
             test_loss_list.append(test_loss)
             acc_list.append(test_acc)
             

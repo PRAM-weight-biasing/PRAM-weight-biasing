@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 import random
 import torch
@@ -69,23 +69,39 @@ def get_unique_filename(directory:str, base_name:str, extension:str) -> str:
             suffix += 1
 
         return new_file_name
+
     
-def fix_seed(seed: Optional[int] = 42) -> None:
-    """fix the random seed number
+def fix_seed(seed=42) -> None:
+    """fix the random seed for reproducibility
 
     Args:
         seed (Optional[int]): _the random seed number_. Defaults to 42.
     """
     
+    # python and numpy
     random.seed(seed)   
     np.random.seed(seed)
+    
+    # pytorch (CPU and GPU)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = False
     torch.use_deterministic_algorithms(True)
     torch.backends.cudnn.deterministic = True
+    
+    # Set environment variables for full determinism
     os.environ["PYTHONHASHSEED"] = str(seed)
-    os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+    # os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"  # for deterministic cuBLAS
+
+
+# Fix worker seed for DataLoader
+def __seed_worker(worker_id):
+    worker_seed = torch.initial_seed() % 2**32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
+    torch.manual_seed(worker_seed)
+
 
 
 def clear_memory():
@@ -101,7 +117,7 @@ def clear_memory():
         torch.cuda.empty_cache()
         
 
-def set_dataloader(data_type: str):
+def set_dataloader(data_type: str, seed=42):
     """set test dataloader
 
     Args:
@@ -111,6 +127,15 @@ def set_dataloader(data_type: str):
         train dataloader (DataLoader)
         test dataloader (DataLoader)
     """
+    
+    def seed_worker(worker_id):
+        worker_seed = torch.initial_seed() % 2**32
+        np.random.seed(worker_seed)
+        random.seed(worker_seed)
+    
+    generator = torch.Generator() 
+    generator.manual_seed(seed)  # set random seed for reproducibility
+
     if data_type == 'mnist':
         
         # set transform
@@ -163,8 +188,10 @@ def set_dataloader(data_type: str):
 
         batch_size=200
         
-        trainloader = DataLoader(cifar10_train, batch_size=batch_size, shuffle=True, num_workers=2) 
-        testloader = DataLoader(cifar10_test, batch_size=batch_size, shuffle=False, num_workers=2) 
+        trainloader = DataLoader(cifar10_train, batch_size=batch_size, shuffle=True, num_workers=2,  
+                                 worker_init_fn=seed_worker, generator=generator) 
+        testloader = DataLoader(cifar10_test, batch_size=batch_size, shuffle=False, num_workers=2,
+                                worker_init_fn=seed_worker, generator=generator) 
     
     return trainloader, testloader
  
@@ -176,7 +203,7 @@ def start_timer():
 
 def end_timer():
     sec = time.time() - start_time
-    times = str(datetime.timedelta(seconds=sec))
+    times = str(timedelta(seconds=sec))
     short = times.split(".")[0]  # until sec.
     end_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[End] Script execution finished at {end_time_str}, runtime: {short} sec\n")

@@ -24,12 +24,14 @@ dir_name = os.getcwd() + '/TestRun/'
 
 # name_list = ["vanilla-MLP"]
 name_list = [ 
-             'vanilla-Resnet18',
+            #  'vanilla-Resnet18',
             #  'Test_2024-10-28_15-15_Resnet18_p0.3',
             #  'Test_2024-10-28_15-22_Resnet18_p0.4',
             #  'Test_2024-10-28_15-26_Resnet18_p0.5',
             #  'Test_2024-10-28_15-27_Resnet18_p0.6',
             #  'Test_2024-10-28_15-32_Resnet18_p0.7',
+            'Test_2025-04-01_20-26_Resnet18_p0.8',
+            'Test_2025-04-01_20-33_Resnet18_p0.9',
                ]
 
 # load the model
@@ -41,7 +43,7 @@ if imported_model == '1':
 elif imported_model == '2':
     model_name = 'FineTuning/best_model.pth'
 elif imported_model == '3':
-    model_name = 'FT_1e-06/best_model.pth'
+    model_name = 'FT_1e-05_50/best_model.pth'
     
 print(f'imported model : {model_name}')
 
