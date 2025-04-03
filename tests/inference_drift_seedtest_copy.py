@@ -3,6 +3,7 @@ import torch
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
+import copy
 
 from Model.PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 
@@ -20,7 +21,9 @@ myModule.start_timer()
 myModule.fix_seed()
 
 dir_name = os.getcwd() + '/TestRun/'
+# dir_name = os.getcwd() + '/Model/'
 
+# name_list = ["vanilla-MLP"]
 name_list = [ 
             'vanilla-Resnet18',
             'Test_2024-10-28_15-15_Resnet18_p0.3',
@@ -63,34 +66,54 @@ noise_list = [0, 0]  # pgm, read noise scale respectively
 def sim_iter(n_rep_sw: int, n_rep_hw: int) -> list :
     
     all_results = []
-    
     # iteration
     for folder_name in name_list:
         print(f'\nfolder : {folder_name}')
         
         """ load the model """
         folder_path = dir_name + folder_name
-        
         if 'vanilla' in folder_name:
             model = resnet18(pretrained=True)
             print('Vanilla model loaded')
         else:
             model = torch.load(f'{folder_path}/{model_name}', map_location='cpu')
         
+        # """ inference accuracy in hw (simulator) """ 
+        # inf_model = InfModel(model=model, mode=datatype, g_list=g_list, noise_list=noise_list)
+        # analog_model = inf_model.ConvertModel(gdc=gdc, ideal_io=ideal_io)  
+
+        # # Inference
+        # t_inferences = [
+        #                 1,                         # 1 sec
+        #                 60,                        # 1 min
+        #                 # 100,
+        #                 # 60 * 60,                   # 1 hour
+        #                 # 24 * 60 * 60,              # 1 day
+        #                 # 30 * 24 * 60 * 60,         # 1 month
+        #                 # 12 * 30 * 24 * 60 * 60,    # 1 year
+        #                 # 36 * 30 * 24 * 60 * 60,    # 3 year
+        #                 1e9,
+        #                 ]
         
-        """ inference accuracy in sw """
-        inf_model = InfModel(model, datatype)
-        inf_model.sw_EvalModel(testloader, n_rep_sw)
+        # results = inf_model.hw_EvalModel(analog_model, testloader, t_inferences, n_rep_hw)
         
-        
-        """ inference accuracy in hw (simulator) """ 
+        # for row in results:
+        #     all_results.append([folder_name] + row)
+
+
+
+        """ ====== t에서 n번씩 반복 inference accuracy in hw (simulator) """ 
+        # results = []
         rep_results = []  # Store results for each repetition
+        for rep in range(n_rep_hw):
+        # for rep in tqdm(range(n_rep_hw), desc='Inference Progress', 
+        #         bar_format='{l_bar}{bar:30}{r_bar}{bar:-10b}'):
         
-        # for rep in range(n_rep_hw):
-        for rep in tqdm(range(n_rep_hw), desc='Inference Progress', 
-                bar_format='{l_bar}{bar:30}{r_bar}{bar:-10b}'):
-            
-            # Set different seed for each repetition
+            # # Set different seed for each repetition - convert model을 fix 하기위한 거였지만, index따라 달라지는 문제.
+            # current_seed = np.random.randint(0, 99999)  # 0에서 99999 사이의 랜덤 정수
+            # print("Generated Seed:", current_seed)
+            # torch.manual_seed(current_seed+rep)
+            # torch.cuda.manual_seed(current_seed+rep)
             current_seed = 42 + rep
             
             inf_model = InfModel(model=model, mode=datatype, g_list=g_list, noise_list=noise_list)
@@ -99,12 +122,12 @@ def sim_iter(n_rep_sw: int, n_rep_hw: int) -> list :
             # Single inference run with current seed
             t_inferences = [1,                         # 1 sec
                             60,                        # 1 min
-                            100,
-                            60 * 60,                   # 1 hour
-                            24 * 60 * 60,              # 1 day
-                            30 * 24 * 60 * 60,         # 1 month
-                            12 * 30 * 24 * 60 * 60,    # 1 year
-                            36 * 30 * 24 * 60 * 60,    # 3 year
+                            # 100,
+                            # 60 * 60,                   # 1 hour
+                            # 24 * 60 * 60,              # 1 day
+                            # 30 * 24 * 60 * 60,         # 1 month
+                            # 12 * 30 * 24 * 60 * 60,    # 1 year
+                            # 36 * 30 * 24 * 60 * 60,    # 3 year
                             1e9,
                             ]
             single_result = inf_model.hw_EvalModel_single(analog_model, testloader, t_inferences, seed=current_seed, n_reps=1)
@@ -122,14 +145,16 @@ def sim_iter(n_rep_sw: int, n_rep_hw: int) -> list :
             
             all_results.append([folder_name, t, mean_acc, std_acc])
             print(f"Time {t}s - Mean: {mean_acc:.2f}%, Std: {std_acc:.2f}%")
-
+            
+        """ ================  """
 
         myModule.clear_memory()
     return all_results
 
+
 # simulation
-n_rep_sw = 1   # Number of inference repetitions.
-n_rep_hw = 30
+n_rep_sw = 0   # Number of inference repetitions.
+n_rep_hw = 3 
 
 for gdc in gdc_list:
     print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')

@@ -306,6 +306,10 @@ class TrainModel():
             test_loss_list.append(test_loss)
             acc_list.append(test_acc)
             
+            # If accuracy is too low, don't update scheduler
+            if test_acc > 10:
+                scheduler.step(test_loss)
+            
             # If the accuracy improved, save the model
             if test_acc > best_acc:
                 best_acc = test_acc
@@ -318,7 +322,7 @@ class TrainModel():
                 # Save the model
                 torch.save(self.model, f'{folder_path}/best_model.pth')
 
-            scheduler.step(test_loss)
+            # scheduler.step(test_loss)
             
             # Print info 
             if epoch % 5 == 0:  
@@ -548,6 +552,9 @@ class InfModel(TrainModel):
         return rpu_config
     
     def ConvertModel(self, gdc:bool, ideal_io:bool):
+        # fix seed for reproducibility during mapping
+        myModule.fix_seed(seed=42)  
+        
         pcm_config = self.SetConfig(gdc=gdc, ideal_io=ideal_io)
         analog_model = convert_to_analog(self.model, pcm_config)
         
@@ -573,12 +580,21 @@ class InfModel(TrainModel):
         results = []
                 
         for t_id, t in enumerate(t_inferences):
-            for i in range(n_reps):              
+            print("[DEBUG] t_inf :", t)
+            
+            for i in range(n_reps): 
+                # fix seed for reproducibility when applying the gaussian noise
+                current_seed = np.random.randint(0, 99999)  # 0에서 99999 사이의 랜덤 정수
+                print("[DEBUG] Generated Seed:", current_seed)
+                torch.manual_seed(current_seed)
+                torch.cuda.manual_seed(current_seed)
+                            
                 # inference
-                analog_model.drift_analog_weights(t)
-                _, test_accuracy = self.eval_fn(analog_model, test_loader)
-                inference_accuracy_values[t_id, i] = test_accuracy
-                print("Accuracy:", test_accuracy)
+                with torch.no_grad():
+                    analog_model.drift_analog_weights(t)
+                    _, test_accuracy = self.eval_fn(analog_model, test_loader)
+                    inference_accuracy_values[t_id, i] = test_accuracy
+                    print("[DEBUG] Accuracy:", test_accuracy)
                 
             mean_acc = inference_accuracy_values[t_id].mean().item()
             std_acc = inference_accuracy_values[t_id].std().item()
@@ -591,22 +607,26 @@ class InfModel(TrainModel):
             
         return results
     
-    def hw_EvalModel_single(self, analog_model, test_loader, t_inferences: list, n_reps: Optional[int]=1) -> list :
+    def hw_EvalModel_single(self, analog_model, test_loader, t_inferences: list, seed: int, n_reps=1) -> list :
         
         analog_model.to(self.device)
         analog_model.eval()
         
-        inference_accuracy_values = torch.zeros((len(t_inferences), n_reps))
+        inference_accuracy_values = torch.zeros((len(t_inferences), n_reps)) 
         results = []
                 
         for t_id, t in enumerate(t_inferences):
+            # fix seed for reproducibility when applying the gaussian noise
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed(seed)
+            
+            analog_model.drift_analog_weights(t)
             for i in range(n_reps):              
                 # inference
                 analog_model.drift_analog_weights(t)
                 _, test_accuracy = self.eval_fn(analog_model, test_loader)
                 inference_accuracy_values[t_id, i] = test_accuracy
-                # print("Accuracy:", test_accuracy)
-            
+                            
             results.append([t, test_accuracy])
             
         return results
@@ -629,7 +649,7 @@ class InfModel(TrainModel):
                 f"Test set accuracy (%) in s/w: \t mean: {mean_acc :.6f}, \t std: {std_acc :.6f}"
             )
             
-    def __eval_cifar10(self, model, test_loader) -> float:
+    def __xeval_cifar10(self, model, test_loader) -> float:
         # Move model to the correct device
         model.to(self.device)
         
@@ -650,7 +670,7 @@ class InfModel(TrainModel):
                 
             return total, test_accuracy
         
-    def __semitrain_cifar10(self, model, test_loader) -> float:
+    def __xsemitrain_cifar10(self, model, test_loader) -> float:
         # Move model to the correct device
         model.to(self.device)
         
