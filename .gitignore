@@ -159,6 +159,7 @@ tests/MNIST_data
 tests/TestRun
 tests/figure
 tests/dataset
+tests/results
 MNIST_data
 src/MNIST_MLP/debug.py
 results/MNIST_MLP

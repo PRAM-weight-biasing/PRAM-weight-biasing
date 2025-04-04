@@ -23,14 +23,13 @@ dir_name = os.getcwd() + '/TestRun/'
 
 name_list = [ 
             'vanilla-Resnet18',
-            'Test_2024-10-28_15-15_Resnet18_p0.3',
-            'Test_2024-10-28_15-22_Resnet18_p0.4',
-            'Test_2024-10-28_15-26_Resnet18_p0.5',
-            'Test_2024-10-28_15-27_Resnet18_p0.6',
+            # 'Test_2024-10-28_15-15_Resnet18_p0.3',
+            # 'Test_2024-10-28_15-22_Resnet18_p0.4',
+            # 'Test_2024-10-28_15-26_Resnet18_p0.5',
+            # 'Test_2024-10-28_15-27_Resnet18_p0.6',
             'Test_2024-10-28_15-32_Resnet18_p0.7',
-            'Test_2025-04-01_20-26_Resnet18_p0.8',
-            'Test_2025-04-01_20-33_Resnet18_p0.9',
-            # 'vanilla-Resnet18',
+            # 'Test_2025-04-01_20-26_Resnet18_p0.8',
+            # 'Test_2025-04-01_20-33_Resnet18_p0.9',
                ]
 
 # load the model
@@ -40,9 +39,9 @@ imported_model = input("Input model type? (1: Pruned /2: Retrained / 3: Test) : 
 if imported_model == '1':
     model_name = 'local_pruned_model.pth'
 elif imported_model == '2':
-    model_name = 'FineTuning/best_model.pth'
-elif imported_model == '3':
     model_name = 'FT_0.0001_50/best_model.pth'
+elif imported_model == '3':
+    model_name = 'FT_1e-05_50/best_model.pth'
     
 print(f'imported model : {model_name}')
 
@@ -56,17 +55,18 @@ _, testloader = myModule.set_dataloader(data_type=datatype)
 
 # simulation setting
 ideal_io = True
-gdc_list = [True]
+gdc_list = [True, False]
 g_list = None  # default = None  // [0.1905, 25] 
 noise_list = [0, 0]  # pgm, read noise scale respectively
 
-def sim_iter(n_rep_sw: int, n_rep_hw: int) -> list :
+def sim_iter(model_name, n_rep_sw: int, n_rep_hw: int) -> list :
     
     all_results = []
     
     # iteration
     for folder_name in name_list:
         print(f'\nfolder : {folder_name}')
+        print(f'model : {model_name}')
         
         """ load the model """
         folder_path = dir_name + folder_name
@@ -133,7 +133,7 @@ n_rep_hw = 30
 
 for gdc in gdc_list:
     print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
-    all_results = sim_iter(n_rep_sw, n_rep_hw)
+    all_results = sim_iter(model_name, n_rep_sw, n_rep_hw)
     
     df = pd.DataFrame(all_results, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
     df.to_excel(f"evaluation_results_gdc_{gdc}_seedtest.xlsx", index=False, engine='openpyxl')
@@ -141,5 +141,31 @@ for gdc in gdc_list:
 
 # tracing ends
 # tracelog.save_trace_results()
+
+# temporary code---------------
+# model_name2 = 'local_pruned_model.pth'
+# print(model_name2)
+
+# for gdc in [True, False]:
+#     print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
+#     all_results2 = sim_iter(model_name2, n_rep_sw, n_rep_hw)
+    
+#     df2 = pd.DataFrame(all_results2, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
+#     df2.to_excel(f"evaluation_results_gdc_{gdc}_seedtest2.xlsx", index=False, engine='openpyxl')
+#     print(f"! Save the file 2 ! \n")
+# -------------------------------
+
+# # temporary code---------------
+# model_name3 = 'FT_0.0005_50/best_model.pth'
+# print(model_name3)
+
+# for gdc in gdc_list:
+#     print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
+#     all_results3 = sim_iter(model_name3, n_rep_sw, n_rep_hw)
+    
+#     df3 = pd.DataFrame(all_results3, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
+#     df3.to_excel(f"evaluation_results_gdc_{gdc}_seedtest3.xlsx", index=False, engine='openpyxl')
+#     print(f"! Save the file 3 ! \n")
+# -------------------------------
 
 myModule.end_timer()

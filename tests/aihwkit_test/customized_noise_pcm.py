@@ -158,7 +158,7 @@ class TestNoiseModel(BaseNoiseModel):
         sig_orig = (-0.0125 * log(g_relative) - 0.0059).clamp(min=0.008, max=0.045)
         sig_const = 0.008
         sig_zero = 0
-        sig_drift = sig_orig  # final
+        sig_drift = sig_zero  # final
         
         nu_drift = torch_abs(mu_drift + sig_drift * randn_like(g_relative)).clamp(min=0.0)
 
