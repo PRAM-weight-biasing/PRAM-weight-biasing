@@ -154,11 +154,16 @@ class TestNoiseModel(BaseNoiseModel):
         
         mu_drift = mu_log_rev  # final
         
+        # print("[DEBUG] [mu_drift sample] :", mu_drift.view(-1)[:5])
+        # print("[DEBUG] mu_default", mu_log_rev.view(-1)[:5])
+        # print("[DEBUG] mu_test3", mu_test3.view(-1)[:5])
+        
+        
         """ sig_drift """
         sig_orig = (-0.0125 * log(g_relative) - 0.0059).clamp(min=0.008, max=0.045)
         sig_const = 0.008
         sig_zero = 0
-        sig_drift = sig_zero  # final
+        sig_drift = sig_orig  # final
         
         nu_drift = torch_abs(mu_drift + sig_drift * randn_like(g_relative)).clamp(min=0.0)
 
