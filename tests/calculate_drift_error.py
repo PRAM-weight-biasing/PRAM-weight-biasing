@@ -1,21 +1,26 @@
-import os
 import torch
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import scipy.io
-
+import os
 from network import InfModel
+from datetime import datetime
 import PlotModule
-
 from Model.PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 
-# layer-wise drift error
+layer = None
 
 vanilla_model = resnet18(pretrained=True)
+output = PlotModule.compute_drift_error(
+    vanilla_model, dataset="cifar10", t_seconds=9.33e7, input_layer_names=layer)
+print('Output:', output)
 
 
-# model import
+# 기본 경로 설정
 base_dir = os.getcwd() + '/TestRun/'
 
+# 폴더 이름 (pruning rate 변화)
 folder_list = [
     'Test_2024-10-28_15-15_Resnet18_p0.3',
     'Test_2024-10-28_15-22_Resnet18_p0.4',
@@ -24,16 +29,14 @@ folder_list = [
     'Test_2024-10-28_15-32_Resnet18_p0.7',
     'Test_2025-04-01_20-26_Resnet18_p0.8',
     'Test_2025-04-01_20-33_Resnet18_p0.9',
-    ]
+]
 
-# fine-tuning rate
+# 모델 이름 (fine-tuning 종류)
 model_subdirs = ['FT_0.0005_50', 'FT_0.0001_50', 'FT_5e-05_50','FT_1e-05_50', 'FT_1e-06_50']
 
-# measurement settings
-layer = 'fc'
-t_seconds = 9.33e7  # 3yr (3 * 365 * 24 * 60 * 60)
+t_seconds = 9.33e7
 
-# Results
+# 결과 저장
 results = []
 
 for folder in folder_list:
@@ -45,17 +48,20 @@ for folder in folder_list:
             model = torch.load(model_path, map_location='cpu')
 
             # Get all 4 drift error ratios
-            total_drift_error, total_drift_error_gdc, total_drift_error_ratio, total_drift_error_ratio_gdc = compute_layer_drift_error_r1(
-                model, dataset="cifar10", layer=layer, t_seconds=t_seconds
+            output1, output2, output3, output4, output5, output6, output7  = PlotModule.compute_drift_error(
+                model, dataset="cifar10", t_seconds=t_seconds, input_layer_names=layer
             )
 
             results.append({
                 'Folder': folder,
                 'FineTuning': model_subdir,
-                'total_drift_error': total_drift_error,
-                'total_drift_error_gdc': total_drift_error_gdc,
-                'total_drift_error_ratio': total_drift_error_ratio,
-                'total_drift_error_ratio_gdc': total_drift_error_ratio_gdc,    
+                'sum_deltaG': output1,
+                'sum_deltaG_gdc': output2,
+                'sum_deltaG_G0': output3,
+                'sum_deltaG_G0_gdc': output4,  
+                'sum_deltaG_sum_G0': output5,
+                'sum_deltaG_sum_G0_gdc': output6,   
+                'alpha': output7,
             })
 
         except Exception as e:

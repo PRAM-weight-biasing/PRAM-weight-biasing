@@ -96,8 +96,7 @@ def plot_weights(model, model_name):
     plt.grid(True, axis='y')
     plt.yscale('log')
     plt.show()
-    
-    
+        
 # Conductance 변환 함수 (FC / Conv 분리)
 def convert_weights_to_conductance(model, rpu_config):
     conductance_list_fc = []
@@ -183,7 +182,8 @@ def plot_conductance_distribution(model, model_name, gdc:bool, ideal_io:bool):
 
     plt.tight_layout()
     plt.show()
-    
+
+# plot weight distribution : layer-wise
 def plot_weight_dist_all(model):
     # 2. 레이어별 weight 가져오기
     weights = {}
@@ -379,7 +379,7 @@ def compute_total_drift_error(model, dataset, gdc=True, ideal_io=True, t_seconds
     print(f"alpha: {alpha:.6f}")
     print(f"Total drift error ratio after {t_seconds}sec (GDC): {total_drift_error_ratio_gdc:.4e}")
 
-
+# plot conductance distribution : before & after overlapped, layer-wise
 def compute_and_plot_network_drift(model, dataset, gdc=True, ideal_io=True, t_seconds=3600*24*7):
     inf_model = InfModel(model, dataset, noise_list=[0, 0])
     rpu_config = inf_model.SetConfig(gdc=gdc, ideal_io=ideal_io)
@@ -476,7 +476,7 @@ def compute_and_plot_network_drift(model, dataset, gdc=True, ideal_io=True, t_se
     plt.show()
     
     
-def compute_layer_drift_error(model, dataset, layer, gdc=True, ideal_io=True, t_seconds=3600*24*7):
+def __compute_layer_drift_error(model, dataset, layer, gdc=True, ideal_io=True, t_seconds=3600*24*7):
 
     inf_model = InfModel(model, dataset, noise_list=[0,0])
     rpu_config = inf_model.SetConfig(gdc=gdc, ideal_io=ideal_io)
@@ -567,13 +567,16 @@ def compute_layer_drift_error(model, dataset, layer, gdc=True, ideal_io=True, t_
     
     return total_drift_error, total_drift_error_gdc,total_drift_error_ratio, total_drift_error_ratio_gdc
 
-def compute_total_drift_error_r1(model, dataset, gdc=True, ideal_io=True, t_seconds=3600*24*7):
+def __compute_total_drift_error_r1(model, dataset, gdc=True, ideal_io=True, t_seconds=3600*24*7):
     """ 
     Usage:
         t_seconds = 9.33e7
         compute_total_drift_error(finetuned_model, dataset="cifar10", t_seconds=t_seconds)
         
     """
+       
+    import myModule
+    myModule.fix_seed(42)
     
     inf_model = InfModel(model, dataset, noise_list=[0,0])
     rpu_config = inf_model.SetConfig(gdc=gdc, ideal_io=ideal_io)
@@ -582,13 +585,11 @@ def compute_total_drift_error_r1(model, dataset, gdc=True, ideal_io=True, t_seco
     noise_model = rpu_config.noise_model
     g_converter = noise_model.g_converter
 
-    # all_g_init = []
-    # all_g_drifted = []
-    # all_delta_g = []
     total_g_init = 0.0
     total_g_drifted = 0.0
     total_drift_err = 0.0
     total_drift_err_ratio = 0.0
+    total_nu = 0.0
 
     for name, param in analog_model.named_parameters():
         if "weight" in name and len(param.size()) > 1:
@@ -633,52 +634,71 @@ def compute_total_drift_error_r1(model, dataset, gdc=True, ideal_io=True, t_seco
             drift_err_ratio = torch.sum(delta_gp_ratio).item() + torch.sum(delta_gm_ratio).item()
             total_drift_err_ratio += drift_err_ratio
             
-    # # 전체 G 및 ΔG 모으기
-    # g_init_all = torch.cat(all_g_init).numpy()
-    # g_drifted_all = torch.cat(all_g_drifted).numpy()
-    # delta_g_all = torch.cat(all_delta_g).numpy()
-    
+            # calculate sum of nu
+            total_nu += torch.sum(nu_gp).item() + torch.sum(nu_gm).item()
+        
     # for global drift compensation
     alpha = total_g_drifted / total_g_init
-    total_drift_err_gdc = total_drift_err * alpha
-    total_drift_err_ratio_gdc = total_drift_err_ratio * alpha
+    total_drift_err_gdc = total_g_init - (total_g_drifted / alpha)
+    total_err_over_init = total_drift_err / total_g_init
+    total_err_over_init_gdc = total_drift_err_gdc / total_g_init
 
+    output = [
+        total_drift_err,           # sum[G0 - G]                = sum[ΔG]
+        total_drift_err_gdc,       # sum[G0 - G/alpha]
+        total_drift_err_ratio,     # sum[(G0 - G) / G0]         = sum[ΔG / G0]
+        total_err_over_init,       # sum[G0 - G] / sum[G0]      = sum[ΔG] / sum[G0]
+        total_err_over_init_gdc,   # sum[G0 - G/alpha] / sum[G0] 
+        alpha,                     # sum[G] / sum[G0] 
+         
+    ]
+    
     # ==== 출력: 통계 요약 ====
     print("[TOTAL DRIFT STATS]")
-    # print(f"ΔG mean: {delta_g_all.mean():.6f}")
-    # print(f"ΔG std : {delta_g_all.std():.6f}")
     print(f"Total drift error after {t_seconds}sec: {total_drift_err:.4e}")
     print(f"Total drift error ratio after {t_seconds}sec: {total_drift_err_ratio:.4e}")
     print(f"alpha: {alpha:.5f}")
-    print(f"Total drift error after {t_seconds}sec (GDC): {total_drift_err_gdc:.4e}")
-    print(f"Total drift error ratio after {t_seconds}sec (GDC): {total_drift_err_ratio_gdc:.4e}")
-    
-    return total_drift_err, total_drift_err_gdc,total_drift_err_ratio, total_drift_err_ratio_gdc
+           
+    return output
 
-def compute_layer_drift_error_r1(model, dataset, layer, gdc=True, ideal_io=True, t_seconds=36 * 30 * 24 * 3600):
-        
-    inf_model = InfModel(model, dataset, noise_list=[0,0])
+
+def compute_drift_error(model, dataset, gdc=True, ideal_io=True, t_seconds=36*30*24*3600, input_layer_names=None):
+    """ 
+    Compute total drift error, both before and after global drift compensation (GDC).
+    """
+
+    import myModule
+    # myModule.fix_seed(42)
+
+    inf_model = InfModel(model, dataset, noise_list=[0, 0])
     rpu_config = inf_model.SetConfig(gdc=gdc, ideal_io=ideal_io)
     analog_model = inf_model.ConvertModel(gdc=gdc, ideal_io=ideal_io)
 
     noise_model = rpu_config.noise_model
     g_converter = noise_model.g_converter
-    
-    all_g_init = []
-    all_g_drifted = []
-    all_delta_g = []
-    total_drift_err = 0.0
-    total_drift_err_ratio = 0.0
+
     total_g_init = 0.0
     total_g_drifted = 0.0
+    total_drift_err = 0.0
+    total_drift_err_ratio = 0.0
     total_nu = 0.0
 
-    for name, param in analog_model.named_parameters():
-        if 'weight' in name and name.startswith(layer) and len(param.size()) > 1:
-            print(name)
-            weights = param.data.cpu()
+    # 1. Compute initial, drifted, and uncorrected errors
+    drift_data = []  # Save per-layer conductances for later GDC
 
-            # Conductance 변환
+    for name, param in analog_model.named_parameters():
+        
+        # 조건: weight 파라미터, 2차원 이상, 그리고 레이어 이름 매칭
+        if 'weight' in name and len(param.size()) > 1:
+            if input_layer_names is not None:
+                matched = any(name.startswith(layer) for layer in input_layer_names)
+                if not matched:
+                    continue  # 해당 레이어가 아니면 skip
+
+        # if "weight" in name and len(param.size()) > 1:
+            weights = param.data.cpu()
+            
+            # Convert weights to conductances
             (gp, gm), _ = g_converter.convert_to_conductances(weights)
 
             # Programming noise (optional, realistic)
@@ -687,60 +707,81 @@ def compute_layer_drift_error_r1(model, dataset, layer, gdc=True, ideal_io=True,
             gp_prog = gp
             gm_prog = gm
 
-            # Drift coefficient generation 
-            # myModule.fix_seed(seed=42)  # with fixed seed if activate the drift variance
+            # Drift coefficient generation
             nu_gp = noise_model.generate_drift_coefficients(gp_prog)
             nu_gm = noise_model.generate_drift_coefficients(gm_prog)
 
-            # Apply drift noise (Gaussian variance)
             gp_drifted = noise_model.apply_drift_noise_to_conductance(gp_prog, nu_gp, t_seconds)
             gm_drifted = noise_model.apply_drift_noise_to_conductance(gm_prog, nu_gm, t_seconds)
-
-            # calculate delta G
+            
+            # Calculate delta G
             delta_gp = gp_prog - gp_drifted 
             delta_gm = gm_prog - gm_drifted
-            
-            # Create masks for non-zero conductances
+
+            # Calculate delta G ratio (for non-zero conductances)
             nonzero_gp = (gp_prog != 0)
             nonzero_gm = (gm_prog != 0)
+
             delta_gp_ratio = (delta_gp[nonzero_gp] / gp_prog[nonzero_gp])
             delta_gm_ratio = (delta_gm[nonzero_gm] / gm_prog[nonzero_gm])
-            
-            # total conductance = Gp + Gm
+
+            # Total values
             total_g_init += torch.sum(gp_prog).item() + torch.sum(gm_prog).item()
             total_g_drifted += torch.sum(gp_drifted).item() + torch.sum(gm_drifted).item()
-            
-            # total drift error = (Gp-Gp_drifted) + (Gm-Gm_drifted)
-            drift_err = torch.sum(delta_gp).item() + torch.sum(delta_gm).item()
-            total_drift_err += drift_err
-            
-            # total drift error ratio = drift_err / G
-            drift_err_ratio = torch.sum(delta_gp_ratio).item() + torch.sum(delta_gm_ratio).item()
-            total_drift_err_ratio += drift_err_ratio
-            
-            # calculate sum of nu
+            total_drift_err += torch.sum(delta_gp).item() + torch.sum(delta_gm).item()
+            total_drift_err_ratio += torch.sum(delta_gp_ratio).item() + torch.sum(delta_gm_ratio).item()
             total_nu += torch.sum(nu_gp).item() + torch.sum(nu_gm).item()
-            
-    # 전체 G 및 ΔG 모으기
-    # g_init_all = torch.cat(all_g_init).numpy()
-    # g_drifted_all = torch.cat(all_g_drifted).numpy()
-    # delta_g_all = torch.cat(all_delta_g).numpy()
-    
-    # for global drift compensation
+
+            # Save for later GDC re-evaluation
+            drift_data.append((gp_prog, gm_prog, gp_drifted, gm_drifted))
+
+    # 2. Global drift compensation (GDC)
     alpha = total_g_drifted / total_g_init
-    total_drift_err_gdc = total_drift_err * alpha
-    total_drift_err_ratio_gdc = total_drift_err_ratio * alpha
-        
-    # ==== 출력: 통계 요약 ====
+    total_drift_err_gdc = 0.0
+    total_drift_err_ratio_gdc = 0.0
+
+    for gp_prog, gm_prog, gp_drifted, gm_drifted in drift_data:
+        # Calculate GDC-corrected delta G
+        gp_drifted_gdc = gp_drifted / alpha
+        gm_drifted_gdc = gm_drifted / alpha
+
+        delta_gp_gdc = gp_prog - gp_drifted_gdc
+        delta_gm_gdc = gm_prog - gm_drifted_gdc
+
+        total_drift_err_gdc += torch.sum(torch.abs(delta_gp_gdc)).item() + torch.sum(torch.abs(delta_gm_gdc)).item()
+        # total_drift_err_gdc += torch.sum(delta_gp_gdc).item() + torch.sum(delta_gm_gdc).item()  # 상쇄되는 경우
+
+        # Calculate GDC-corrected delta G ratio (for non-zero conductances)
+        nonzero_gp = (gp_prog != 0)
+        nonzero_gm = (gm_prog != 0)
+
+        delta_gp_gdc_ratio = (delta_gp_gdc[nonzero_gp] / gp_prog[nonzero_gp])
+        delta_gm_gdc_ratio = (delta_gm_gdc[nonzero_gm] / gm_prog[nonzero_gm])
+        total_drift_err_ratio_gdc += torch.sum(torch.abs(delta_gp_gdc_ratio)).item() + torch.sum(torch.abs(delta_gm_gdc_ratio)).item()
+        # total_drift_err_ratio_gdc += torch.sum(delta_gp_gdc_ratio).item() + torch.sum(delta_gm_gdc_ratio).item() # 상쇄되는 경우
+
+    # 3. Summary stats
+    total_err_over_init = total_drift_err / total_g_init
+    total_err_over_init_gdc = total_drift_err_gdc / total_g_init
+
+    output = [
+        total_drift_err,             # 1
+        total_drift_err_gdc,         # 2
+        total_drift_err_ratio,       # 3
+        total_drift_err_ratio_gdc,   # 4
+        total_err_over_init,         # 5
+        total_err_over_init_gdc,     # 6
+        alpha,                       # 7   
+    ]
+
+    # === 출력 ===
     print("[TOTAL DRIFT STATS]")
-    # print(f"ΔG mean: {delta_g_all.mean():.6f}")
-    # print(f"ΔG std : {delta_g_all.std():.6f}")
-    # print(f"ΔG max : {delta_g_all.max():.6f}")
-    # print(f"ΔG 99th percentile: {np.percentile(delta_g_all, 99):.6f}")
-    print(f"Total drift error after {t_seconds}sec: {total_drift_err:.4e}")
-    print(f"Total drift error ratio after {t_seconds}sec: {total_drift_err_ratio:.4e}")
-    print(f"alpha: {alpha:.5f}")
-    print(f"Total drift error after {t_seconds}sec (GDC): {total_drift_err_gdc:.4e}")
-    print(f"Total drift error ratio after {t_seconds}sec (GDC): {total_drift_err_ratio_gdc:.4e}")
+    print(f"Target layers: {'ALL' if input_layer_names is None else input_layer_names}")
+    print(f"Total drift error after {t_seconds:.1f} sec: {total_drift_err:.4e}")
+    print(f"Total drift error ratio (sum of ΔG/G₀): {total_drift_err_ratio:.4e}")
+    print(f"alpha (G_drifted / G_init): {alpha:.5f}")
+    # print(f"GDC-corrected drift error: {total_drift_err_gdc:.4e}")
+    # print(f"GDC-corrected drift error ratio (ΔG/G₀): {total_drift_err_ratio_gdc:.4e}")
+
+    return output
     
-    return total_drift_err, total_drift_err_gdc,total_drift_err_ratio, total_drift_err_ratio_gdc
