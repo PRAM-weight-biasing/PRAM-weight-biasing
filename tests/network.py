@@ -250,6 +250,36 @@ class TrainModel():
         plt.savefig(f'{folder_path}/ChartPerEpoch.png')
         plt.clf()
     
+    def Vis_loss_split(self, epochs, ce_loss_list, custom_loss_list, test_loss_list, acc_list, folder_path: str):
+        # Visualize separated loss and accuracy
+        ce_loss_list = [t.cpu().numpy() if torch.is_tensor(t) else t for t in ce_loss_list]
+        custom_loss_list = [t.cpu().numpy() if torch.is_tensor(t) else t for t in custom_loss_list]
+        test_loss_list = [t.cpu().numpy() if torch.is_tensor(t) else t for t in test_loss_list]
+        acc_list = [t.cpu().numpy() if torch.is_tensor(t) else t for t in acc_list]
+        
+        plt.figure(figsize=(12,4))
+
+        plt.subplot(1,3,1)
+        plt.plot(np.arange(0,epochs), ce_loss_list, label='Cross Entropy')
+        plt.plot(np.arange(0,epochs), custom_loss_list, label='Custom Reg', linestyle='--')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss Value')
+        plt.legend()
+
+        plt.subplot(1,3,2)
+        plt.plot(np.arange(0,epochs), test_loss_list)
+        plt.xlabel('Epoch')
+        plt.ylabel('Test Loss')
+
+        plt.subplot(1,3,3)
+        plt.plot(np.arange(0,epochs), acc_list)
+        plt.xlabel('Epoch')
+        plt.ylabel('Accuracy')
+
+        plt.tight_layout()
+        plt.savefig(f'{folder_path}/ChartPerEpoch_split.png')
+        plt.clf()
+    
     @staticmethod
     def freeze_batchnorm(module):
         if isinstance(module, torch.nn.modules.batchnorm._BatchNorm):
@@ -330,7 +360,144 @@ class TrainModel():
         
         print(f"\n test loss: {best_loss:.6f}, Best test accuracy: {best_acc:.2f}%, Epoch: {best_Epoch}, LR: {best_LR:.2e}\n")
         self.Vis_accuracy(num_epochs, train_loss_list, test_loss_list, acc_list, folder_path)
+    
+    
+    def custom_loss(self, model, lambda_val=1e-4, multiplier_th=1.5, smoothL1_beta=1.0):
+
+        total_reg = torch.tensor(0., device=next(model.parameters()).device, requires_grad=True)
+
+        for param in model.parameters():
+            if param.requires_grad:
+                if param.numel() == 0:
+                    continue  # skip empty tensors
+
+                max_weight = param.abs().max()
+                threshold = multiplier_th * max_weight
+
+                # threshold 이하 weight만 선택
+                mask = (param.abs() < threshold)
+                selected_weights = param[mask]
+
+                if selected_weights.numel() > 0:
+                    # SmoothL1 Loss 
+                    reg_loss = F.smooth_l1_loss(
+                        selected_weights,
+                        torch.zeros_like(selected_weights),
+                        reduction='sum',  # 전체 합산
+                        beta=smoothL1_beta          # 부드러움 조정 (작을수록 0 근처에 민감)
+                    )
+                    total_reg = total_reg + reg_loss
+
+        return lambda_val * total_reg
+    
+    def cifar_neg_reg(self, learning_rate: float, num_epochs: int, folder_path, 
+                      lambda_val: float, multiplier_th= 1.0, smoothL1_beta= 1.0) -> None:
+        """_summary_
+
+        Args:
+            learning_rate (float): 
+            num_epochs (int): 
+            folder_path (_type_): directory to save the model
+            lambda_val (float): coefficient of negative L2 regularization
+            multiplier_th (float): threshold multiplier to adjust regularization
+            smoothL1_beta (float): coefficient of smooth L1 loss
+        """
+        for _, param in self.model.named_parameters():
+            param.requires_grad = True  # train all Conv & FC layers
+                                    
+        # Define the loss function and optimizer
+        loss_fn = nn.CrossEntropyLoss()
+        optimizer = Adam(self.model.parameters(), lr= learning_rate, weight_decay=0)
+        scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=5)  
+        
+        # Data loader
+        from myModule import set_dataloader
+        trainloader, testloader = set_dataloader(data_type='cifar10')
+        
+        # Initialize parameters
+        best_loss = float('inf')  # Initialize with a high number
+        best_acc = 0
+        best_Epoch, best_LR = 0, 0
+        train_loss_list = []
+        test_loss_list = []
+        acc_list = []
+        ce_loss_list = []
+        custom_loss_list = []
+           
+        # Train and test
+        self.model.train()
+        self.model.apply(self.freeze_batchnorm)  # fix batchnorm layers
+        
+        for epoch in range(num_epochs):
             
+            # Train
+            total_train_loss = 0
+            total_ce_loss = 0
+            total_custom_loss = 0
+
+            for batch_idx, (inputs, targets) in enumerate(trainloader):  # debug ; self.train_dataloader
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
+                outputs = self.model(inputs)
+                ce_loss = loss_fn(outputs, targets)
+                
+                # add custom loss term
+                custom_loss = self.custom_loss(
+                    self.model,
+                    lambda_val=lambda_val,
+                    multiplier_th=multiplier_th,
+                    smoothL1_beta=smoothL1_beta
+                )
+                loss = ce_loss + custom_loss
+
+                total_train_loss += loss.item()
+                total_ce_loss += ce_loss.item()
+                total_custom_loss += custom_loss.item()
+                
+                    
+                optimizer.zero_grad()   # Initialize the optimizer
+                loss.backward()         # calculate gradient
+                optimizer.step()        # update weights : w -= lr * w.grad
+                
+            total_train_loss /= len(trainloader) # debug ; self.train_dataloader
+            train_loss_list.append(total_train_loss)
+            
+            total_ce_loss /= len(trainloader)
+            total_custom_loss /= len(trainloader)
+            ce_loss_list.append(total_ce_loss)
+            custom_loss_list.append(total_custom_loss)
+            
+            # Test
+            self.model.eval()
+            test_loss, test_acc = self.eval_cifar10(self.model, testloader) # debug ; self.test_dataloade
+            test_loss_list.append(test_loss)
+            acc_list.append(test_acc)
+            
+            # If accuracy is too low, don't update scheduler
+            if test_acc > 10:
+                scheduler.step(test_loss)
+            
+            # If the accuracy improved, save the model
+            if test_acc > best_acc:
+                best_acc = test_acc
+                best_loss = test_loss
+                
+                # save only best model parameter
+                torch.save(self.model.state_dict(), f'{folder_path}/best_model_param.pth')
+                best_Epoch, best_LR = epoch+1, optimizer.param_groups[0]['lr']
+
+                # Save the model
+                torch.save(self.model, f'{folder_path}/best_model.pth')
+
+            # scheduler.step(test_loss)
+            
+            # Print info 
+            if epoch % 5 == 0:  
+                print(f"Epoch {epoch+1}/{num_epochs}, \tLearning Rate: {optimizer.param_groups[0]['lr']:.1e}, \tTrain Loss: {total_train_loss:.6f}, \tTest Loss: {test_loss:.6f}, \tTest Accuracy : {test_acc:.2f}%")
+        
+        print(f"\n test loss: {best_loss:.6f}, Best test accuracy: {best_acc:.2f}%, Epoch: {best_Epoch}, LR: {best_LR:.2e}\n")
+        self.Vis_accuracy(num_epochs, train_loss_list, test_loss_list, acc_list, folder_path)
+        self.Vis_loss_split(num_epochs, ce_loss_list, custom_loss_list, test_loss_list, acc_list, folder_path)
+               
             
     def eval_cifar10(self, model, test_loader) -> float:
         # model.to(self.device)
