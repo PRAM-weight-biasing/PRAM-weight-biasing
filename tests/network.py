@@ -257,20 +257,32 @@ class TrainModel():
         test_loss_list = [t.cpu().numpy() if torch.is_tensor(t) else t for t in test_loss_list]
         acc_list = [t.cpu().numpy() if torch.is_tensor(t) else t for t in acc_list]
         
+        
+        # Visualize separated loss and accuracy
         plt.figure(figsize=(12,4))
 
-        plt.subplot(1,3,1)
-        plt.plot(np.arange(0,epochs), ce_loss_list, label='Cross Entropy')
-        plt.plot(np.arange(0,epochs), custom_loss_list, label='Custom Reg', linestyle='--')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss Value')
-        plt.legend()
+        # --- First subplot: Loss curves with two y-axis
+        ax1 = plt.subplot(1,3,1)
+        ax2 = ax1.twinx()  # Create a twin axis sharing the same x-axis
 
+        ax1.plot(np.arange(0,epochs), ce_loss_list, label='Cross Entropy', color='blue')
+        ax2.plot(np.arange(0,epochs), custom_loss_list, label='Custom Reg', color='orange', linestyle='--')
+
+        ax1.set_xlabel('Epoch')
+        ax1.set_ylabel('Cross Entropy Loss', color='blue')
+        ax2.set_ylabel('Custom Reg Loss', color='orange')
+
+        # Add legends separately
+        ax1.legend(loc='upper left')
+        ax2.legend(loc='upper right')
+
+        # --- Second subplot: Test Loss
         plt.subplot(1,3,2)
         plt.plot(np.arange(0,epochs), test_loss_list)
         plt.xlabel('Epoch')
         plt.ylabel('Test Loss')
 
+        # --- Third subplot: Accuracy
         plt.subplot(1,3,3)
         plt.plot(np.arange(0,epochs), acc_list)
         plt.xlabel('Epoch')
@@ -447,7 +459,7 @@ class TrainModel():
                     multiplier_th=multiplier_th,
                     smoothL1_beta=smoothL1_beta
                 )
-                loss = ce_loss + custom_loss
+                loss = ce_loss - custom_loss  # custom loss 큰 방향으로 update
 
                 total_train_loss += loss.item()
                 total_ce_loss += ce_loss.item()

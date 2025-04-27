@@ -43,13 +43,13 @@ trainloader, testloader = myModule.set_dataloader(data_type=datatype)
 
 """ Training """
 # lr =5e-5
-lr_list = [1e-6]    # [5e-4, 1e-4, 5e-5, 1e-5, 1e-6]   
+lr_list =  [1e-4, 1e-5, 1e-6]    # [5e-4, 1e-4, 5e-5, 1e-5, 1e-6]   
 num_epochs = 30
 
 # iterate over learning rates
 for lr in lr_list:
     myModule.fix_seed()
-    new_folder = folder_path + f'/FT_rev1_{lr}_{num_epochs}'
+    new_folder = folder_path + f'/FT_rev1.1_{lr}_{num_epochs}'
     os.makedirs(new_folder, exist_ok=True)
     print(new_folder)
 
@@ -80,13 +80,13 @@ pruned_model2 = torch.load(f'{folder_path2}/{model_name}', map_location='cpu')
 
 """ Training """
 # lr =5e-5
-lr_list2 = [1e-4, 1e-5, 1e-6]       # [5e-4, 1e-4, 5e-5, 1e-5, 1e-6]   
-num_epochs = 50
+lr_list2 =  [1e-3, 1e-4, 1e-5, 1e-6]        # [5e-4, 1e-4, 5e-5, 1e-5, 1e-6]   
+num_epochs = 30
 
 # iterate over learning rates
 for lr in lr_list2:
     myModule.fix_seed()
-    new_folder = folder_path2 + f'/FT_rev1_{lr}_{num_epochs}'
+    new_folder = folder_path2 + f'/FT_rev1.1_{lr}_{num_epochs}'
     os.makedirs(new_folder, exist_ok=True)
     print(new_folder)
 
@@ -117,13 +117,13 @@ pruned_model3 = torch.load(f'{folder_path3}/{model_name}', map_location='cpu')
 
 """ Training """
 # lr =5e-5
-lr_list3 = [1e-4, 1e-5, 1e-6]       # [5e-4, 1e-4, 5e-5, 1e-5, 1e-6]   
-num_epochs = 50
+lr_list3 = [1e-3, 1e-4, 1e-5, 1e-6]       # [5e-4, 1e-4, 5e-5, 1e-5, 1e-6]   
+num_epochs = 30
 
 # iterate over learning rates
 for lr in lr_list3:
     myModule.fix_seed()
-    new_folder = folder_path3 + f'/FT_rev1_{lr}_{num_epochs}'
+    new_folder = folder_path3 + f'/FT_rev1.1_{lr}_{num_epochs}'
     os.makedirs(new_folder, exist_ok=True)
     print(new_folder)
 

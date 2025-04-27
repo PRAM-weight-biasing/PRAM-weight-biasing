@@ -22,14 +22,14 @@ myModule.fix_seed()
 dir_name = os.getcwd() + '/TestRun/'
 
 name_list = [ 
-            'vanilla-Resnet18',
-            # 'Test_2024-10-28_15-15_Resnet18_p0.3',
-            # 'Test_2024-10-28_15-22_Resnet18_p0.4',
-            # 'Test_2024-10-28_15-26_Resnet18_p0.5',
-            # 'Test_2024-10-28_15-27_Resnet18_p0.6',
-            'Test_2024-10-28_15-32_Resnet18_p0.7',
-            # 'Test_2025-04-01_20-26_Resnet18_p0.8',
-            # 'Test_2025-04-01_20-33_Resnet18_p0.9',
+            # 'vanilla-Resnet18',
+            # 'Resnet18_p0.3',
+            # 'Resnet18_p0.4',
+            'Resnet18_p0.5',
+            'Resnet18_p0.6',
+            'Resnet18_p0.7',
+            # 'Resnet18_p0.8',
+            # 'Resnet18_p0.9',
                ]
 
 # load the model
@@ -41,7 +41,7 @@ if imported_model == '1':
 elif imported_model == '2':
     model_name = 'FT_0.0001_50/best_model.pth'
 elif imported_model == '3':
-    model_name = 'FT_1e-05_50/best_model.pth'
+    model_name = 'FT_rev1.1_0.001_30/best_model.pth'
     
 print(f'imported model : {model_name}')
 
@@ -143,29 +143,42 @@ for gdc in gdc_list:
 # tracelog.save_trace_results()
 
 # temporary code---------------
-# model_name2 = 'local_pruned_model.pth'
-# print(model_name2)
+model_name2 = 'FT_rev1.1_0.0001_30/best_model.pth'
+print(model_name2)
 
-# for gdc in [True, False]:
-#     print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
-#     all_results2 = sim_iter(model_name2, n_rep_sw, n_rep_hw)
+for gdc in [True, False]:
+    print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
+    all_results2 = sim_iter(model_name2, n_rep_sw, n_rep_hw)
     
-#     df2 = pd.DataFrame(all_results2, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
-#     df2.to_excel(f"evaluation_results_gdc_{gdc}_seedtest2.xlsx", index=False, engine='openpyxl')
-#     print(f"! Save the file 2 ! \n")
+    df2 = pd.DataFrame(all_results2, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
+    df2.to_excel(f"evaluation_results_gdc_{gdc}_seedtest2.xlsx", index=False, engine='openpyxl')
+    print(f"! Save the file 2 ! \n")
 # -------------------------------
 
 # # temporary code---------------
-# model_name3 = 'FT_0.0005_50/best_model.pth'
-# print(model_name3)
+model_name3 = 'FT_rev1.1_1e-05_30/best_model.pth'
+print(model_name3)
 
-# for gdc in gdc_list:
-#     print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
-#     all_results3 = sim_iter(model_name3, n_rep_sw, n_rep_hw)
+for gdc in gdc_list:
+    print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
+    all_results3 = sim_iter(model_name3, n_rep_sw, n_rep_hw)
     
-#     df3 = pd.DataFrame(all_results3, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
-#     df3.to_excel(f"evaluation_results_gdc_{gdc}_seedtest3.xlsx", index=False, engine='openpyxl')
-#     print(f"! Save the file 3 ! \n")
+    df3 = pd.DataFrame(all_results3, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
+    df3.to_excel(f"evaluation_results_gdc_{gdc}_seedtest3.xlsx", index=False, engine='openpyxl')
+    print(f"! Save the file 3 ! \n")
+# -------------------------------
+
+ # temporary code---------------
+model_name4 = 'FT_rev1.1_1e-06_30/best_model.pth'
+print(model_name4)
+
+for gdc in gdc_list:
+    print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
+    all_results4 = sim_iter(model_name4, n_rep_sw, n_rep_hw)
+    
+    df4 = pd.DataFrame(all_results4, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
+    df4.to_excel(f"evaluation_results_gdc_{gdc}_seedtest4.xlsx", index=False, engine='openpyxl')
+    print(f"! Save the file 4 ! \n")
 # -------------------------------
 
 myModule.end_timer()
