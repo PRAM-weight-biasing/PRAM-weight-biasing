@@ -188,7 +188,7 @@ def plot_weight_dist_all(model):
     # 2. 레이어별 weight 가져오기
     weights = {}
     for name, param in model.named_parameters():
-        if ('weight' in name):
+        if ('weight' in name) and ('bn' not in name) and ('downsample.1' not in name):
             weights[name] = param.detach().cpu().numpy().flatten()
 
     # 3. Subplot 설정

@@ -22,11 +22,11 @@ myModule.fix_seed()
 dir_name = os.getcwd() + '/TestRun/'
 
 name_list = [ 
-            # 'vanilla-Resnet18',
+            'vanilla-Resnet18',
             'Resnet18_p0.3',
             # 'Resnet18_p0.4',
             # 'Resnet18_p0.5',
-            # 'Resnet18_p0.6',
+            'Resnet18_p0.6',
             # 'Resnet18_p0.7',
             # 'Resnet18_p0.8',
             'Resnet18_p0.9',
@@ -55,11 +55,11 @@ _, testloader = myModule.set_dataloader(data_type=datatype)
 
 # simulation setting
 ideal_io = True
-gdc_list = [False]
-g_list = None  # default = None  // [0.1905, 25] 
+gdc_list = [True, False]
+g_list = [[2.5,25],  [10,25]]  # default = None  // [0.1905, 25] 
 noise_list = [0, 0]  # pgm, read noise scale respectively
 
-def sim_iter(model_name, n_rep_sw: int, n_rep_hw: int) -> list :
+def sim_iter(model_name, n_rep_sw: int, n_rep_hw: int, g_range: list) -> list :
     
     all_results = []
     
@@ -93,7 +93,7 @@ def sim_iter(model_name, n_rep_sw: int, n_rep_hw: int) -> list :
             # Set different seed for each repetition
             current_seed = 42 + rep
             
-            inf_model = InfModel(model=model, mode=datatype, g_list=g_list, noise_list=noise_list)
+            inf_model = InfModel(model=model, mode=datatype, g_list=g_range, noise_list=noise_list)
             analog_model = inf_model.ConvertModel(gdc=gdc, ideal_io=ideal_io)
             
             # Single inference run with current seed
@@ -132,15 +132,15 @@ n_rep_sw = 1   # Number of inference repetitions.
 n_rep_hw = 30
 
 for gdc in gdc_list:
-    print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
-    all_results = sim_iter(model_name, n_rep_sw, n_rep_hw)
-    
-    df = pd.DataFrame(all_results, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
-    df.to_excel(f"evaluation_results_gdc_{gdc}_seedtest.xlsx", index=False, engine='openpyxl')
-    print(f"! Save the file: evaluation_results_gdc_{gdc}.xlsx\n")
+    for g_range in g_list:
+        print(f'\n--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_range}, noise={noise_list} ---')
+        all_results = sim_iter(model_name, n_rep_sw, n_rep_hw, g_range)
+        
+        df = pd.DataFrame(all_results, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
+        df.to_excel(f"evaluation_results_gdc_{gdc}_{g_range}.xlsx", index=False, engine='openpyxl')
+        print(f"! Save the file : {gdc}_{g_range} \n")
 
-# tracing ends
-# tracelog.save_trace_results()
+
 
 # temporary code---------------
 # model_name2 = 'FT_rev1.3_0.0001_50/best_model.pth'

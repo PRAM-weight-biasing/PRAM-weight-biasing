@@ -374,7 +374,7 @@ class TrainModel():
         self.Vis_accuracy(num_epochs, train_loss_list, test_loss_list, acc_list, folder_path)
     
     
-    def custom_loss(self, model, lambda_val=1e-4, multiplier_th=1.5, smoothL1_beta=1.0):
+    def custom_loss(self, model, lambda_val: float, multiplier_th: float):
 
         total_reg = torch.tensor(0., device=next(model.parameters()).device, requires_grad=True)
 
@@ -391,19 +391,32 @@ class TrainModel():
                 selected_weights = param[mask]
 
                 if selected_weights.numel() > 0:
+                    
                     # SmoothL1 Loss 
-                    reg_loss = F.smooth_l1_loss(
+                    smoothL1_beta = 0.5
+                    smoothL1_loss = F.smooth_l1_loss(
                         selected_weights,
                         torch.zeros_like(selected_weights),
                         reduction='sum',  # 전체 합산
                         beta=smoothL1_beta          # 부드러움 조정 (작을수록 0 근처에 민감)
                     )
-                    total_reg = total_reg + reg_loss
+                    
+                    # Inverse Loss
+                    epsilon=1e-2
+                    inverse_loss = torch.sum(1.0 / (param ** 2 + epsilon))
+                    smooth_inverse_loss = torch.sum(1.0 / torch.sqrt(param ** 2 + epsilon))
+                    
+                    # Quadratic Loss
+                    const = 10.0
+                    quad_loss = -torch.sum(const*((param**2)-0.16)**2)
+                    
+                    total_reg = total_reg + quad_loss
 
         return lambda_val * total_reg
     
+    
     def cifar_neg_reg(self, learning_rate: float, num_epochs: int, folder_path, 
-                      lambda_val: float, multiplier_th= 1.0, smoothL1_beta= 1.0) -> None:
+                      lambda_val: float, multiplier_th= 1.0) -> None:
         """_summary_
 
         Args:
@@ -412,7 +425,6 @@ class TrainModel():
             folder_path (_type_): directory to save the model
             lambda_val (float): coefficient of negative L2 regularization
             multiplier_th (float): threshold multiplier to adjust regularization
-            smoothL1_beta (float): coefficient of smooth L1 loss
         """
         for _, param in self.model.named_parameters():
             param.requires_grad = True  # train all Conv & FC layers
@@ -455,11 +467,10 @@ class TrainModel():
                 # add custom loss term
                 custom_loss = self.custom_loss(
                     self.model,
-                    lambda_val=lambda_val,
-                    multiplier_th=multiplier_th,
-                    smoothL1_beta=smoothL1_beta
+                    lambda_val=lambda_val,   # coefficient of customized regularization
+                    multiplier_th=multiplier_th,  
                 )
-                loss = ce_loss - custom_loss  # custom loss 큰 방향으로 update
+                loss = ce_loss + custom_loss   # awary from zero
 
                 total_train_loss += loss.item()
                 total_ce_loss += ce_loss.item()
