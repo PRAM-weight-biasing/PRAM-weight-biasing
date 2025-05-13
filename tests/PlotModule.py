@@ -2,6 +2,7 @@ import torch
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io
+import seaborn as sns
 from network import InfModel
 
 
@@ -142,7 +143,49 @@ def convert_weights_to_conductance(model, rpu_config):
     return conductance_list_fc, conductance_list_conv
 
 # Conductance distribution plot
-def plot_conductance_distribution(model, model_name, gdc:bool, ideal_io:bool):
+def plot_G_dist(model, model_name, gdc:bool, ideal_io:bool):
+    inf_model = InfModel(model, "cifar10")
+    rpu_config = inf_model.SetConfig(gdc=gdc, ideal_io=ideal_io)
+    analog_model = inf_model.ConvertModel(gdc=gdc, ideal_io=ideal_io)
+
+    conductance_list_fc, conductance_list_conv = convert_weights_to_conductance(analog_model, rpu_config)
+
+    gp_fc_all = np.concatenate([gp for gp, _ in conductance_list_fc]) if conductance_list_fc else np.array([])
+    gm_fc_all = np.concatenate([gm for _, gm in conductance_list_fc]) if conductance_list_fc else np.array([])
+
+    gp_conv_all = np.concatenate([gp for gp, _ in conductance_list_conv]) if conductance_list_conv else np.array([])
+    gm_conv_all = np.concatenate([gm for _, gm in conductance_list_conv]) if conductance_list_conv else np.array([])
+
+    fig, axes = plt.subplots(1,2, figsize=(12, 5))
+    # 전체 제목 (중앙)
+    fig.suptitle(model_name, fontsize=14, fontweight='bold')  
+
+    # FC 레이어 Conductance Plot
+    axes[0].hist(gp_fc_all, bins=150, alpha=1, label="Gp (FC)")
+    axes[0].hist(-gm_fc_all, bins=150, alpha=0.7, label="Gm (FC)")
+    axes[0].set_title('G Distribution (FC)')
+    axes[0].set_xlabel('Conductance Value')
+    axes[0].set_ylabel('Frequency')
+    axes[0].legend()
+    axes[0].grid(True, axis='y')
+    # axes[0].set_yscale('log')
+    axes[0].set_ylim(0,1000)
+
+    # Conv 레이어 Conductance Plot
+    axes[1].hist(gp_conv_all, bins=500, alpha=1, label="Gp (Conv)")
+    axes[1].hist(-gm_conv_all, bins=500, alpha=0.7, label="Gm (Conv)")
+    axes[1].set_title('G Distribution (Conv)')
+    axes[1].set_xlabel('Conductance Value')
+    axes[1].set_ylabel('Frequency')
+    axes[1].legend()
+    axes[1].grid(True, axis='y')
+    # axes[1].set_yscale('log')
+    axes[1].set_ylim(0,500000)
+
+    plt.tight_layout()
+    plt.show()
+    
+def plot_G_dist_log(model, model_name, gdc:bool, ideal_io:bool):
     inf_model = InfModel(model, "cifar10")
     rpu_config = inf_model.SetConfig(gdc=gdc, ideal_io=ideal_io)
     analog_model = inf_model.ConvertModel(gdc=gdc, ideal_io=ideal_io)
@@ -214,6 +257,116 @@ def plot_weight_dist_all(model):
     # 5. 그래프 표시
     plt.tight_layout()
     plt.show()
+
+def plot_weight_dist_multiple(models, model_names):
+    """
+    여러 모델의 weight 분포를 layer별로 overlay histogram 형태로 시각화
+
+    Args:
+        models (list): 모델 리스트
+        model_names (list): 모델 이름 리스트 (legend로 사용됨)
+    """
+
+    # 모든 모델의 weight 수집
+    all_weights = {}
+
+    for model, model_name in zip(models, model_names):
+        for name, param in model.named_parameters():
+            if ('weight' in name) and ('bn' not in name) and ('downsample.1' not in name):
+                if name not in all_weights:
+                    all_weights[name] = {}
+                all_weights[name][model_name] = param.detach().cpu().numpy().flatten()
+                
+    # color palette (부드러운 색상 계열)
+    # colors = sns.color_palette("Set2", len(model_names))
+
+    # layer 수에 맞게 subplot 준비
+    num_layers = len(all_weights)
+    cols = 4
+    rows = (num_layers + cols - 1) // cols
+
+    fig, axes = plt.subplots(rows, cols, figsize=(15, rows * 4))
+    axes = axes.flatten()
+
+    # layer별로 histogram 그리기 (모델별 overlay)
+    for idx, (layer_name, model_weights) in enumerate(all_weights.items()):
+        ax = axes[idx]
+
+        for model_name, weights in model_weights.items():
+            if 'original' in model_name :
+                ax.hist(weights, bins=100, alpha=0.9, label=model_name, histtype='step', color='black')
+            else:
+                ax.hist(weights, bins=100, alpha=0.9, label=model_name, histtype='step')
+            
+        # for color, (model_name, weights) in zip(colors, model_weights.items()):
+        #     ax.hist(weights, bins=100, alpha=1, color=color, label=model_name, histtype='step')
+
+        ax.set_title(layer_name)
+        ax.set_xlabel("Weight Values")
+        ax.set_ylabel("Frequency")
+        ax.grid(True)
+        ax.legend()
+
+    # 빈 subplot 숨기기
+    for idx in range(num_layers, len(axes)):
+        axes[idx].axis('off')
+
+    plt.tight_layout()
+    plt.show()
+        
+def plot_weight_dist_two(models, model_names):
+    """
+    여러 모델의 weight 분포를 layer별로 overlay histogram 형태로 시각화
+
+    Args:
+        models (list): 모델 리스트
+        model_names (list): 모델 이름 리스트 (legend로 사용됨)
+    """
+
+    # 모든 모델의 weight 수집
+    all_weights = {}
+
+    for model, model_name in zip(models, model_names):
+        for name, param in model.named_parameters():
+            if ('weight' in name) and ('bn' not in name) and ('downsample.1' not in name):
+                if name not in all_weights:
+                    all_weights[name] = {}
+                all_weights[name][model_name] = param.detach().cpu().numpy().flatten()
+                
+    # color palette (부드러운 색상 계열)
+    # colors = sns.color_palette("Set2", len(model_names))
+
+    # layer 수에 맞게 subplot 준비
+    num_layers = len(all_weights)
+    cols = 4
+    rows = (num_layers + cols - 1) // cols
+
+    fig, axes = plt.subplots(rows, cols, figsize=(15, rows * 4))
+    axes = axes.flatten()
+
+    # layer별로 histogram 그리기 (모델별 overlay)
+    for idx, (layer_name, model_weights) in enumerate(all_weights.items()):
+        ax = axes[idx]
+
+        for model_name, weights in model_weights.items():
+            ax.hist(weights, bins=100, alpha=0.6, label=model_name)
+            
+        # for color, (model_name, weights) in zip(colors, model_weights.items()):
+        #     ax.hist(weights, bins=100, alpha=1, color=color, label=model_name, histtype='step')
+
+        ax.set_title(layer_name)
+        ax.set_xlabel("Weight Values")
+        ax.set_ylabel("Frequency")
+        ax.grid(True)
+        ax.legend()
+
+    # 빈 subplot 숨기기
+    for idx in range(num_layers, len(axes)):
+        axes[idx].axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
 
 def plot_weight_module(model, module_name):
     for name, param in model.named_parameters():

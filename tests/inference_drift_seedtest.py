@@ -23,7 +23,7 @@ dir_name = os.getcwd() + '/TestRun/'
 
 name_list = [ 
             # 'vanilla-Resnet18',
-            'Resnet18_p0.3',
+            # 'Resnet18_p0.3',
             # 'Resnet18_p0.4',
             # 'Resnet18_p0.5',
             # 'Resnet18_p0.6',
