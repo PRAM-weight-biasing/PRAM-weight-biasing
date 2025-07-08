@@ -22,14 +22,14 @@ myModule.fix_seed()
 dir_name = os.getcwd() + '/TestRun/'
 
 name_list = [ 
-            # 'vanilla-Resnet18',
+            'vanilla-Resnet18',
             # 'Resnet18_p0.3',
             # 'Resnet18_p0.4',
             # 'Resnet18_p0.5',
             # 'Resnet18_p0.6',
             # 'Resnet18_p0.7',
             # 'Resnet18_p0.8',
-            'Resnet18_p0.9',
+            # 'Resnet18_p0.9',
                ]
 
 # load the model
@@ -55,9 +55,9 @@ _, testloader = myModule.set_dataloader(data_type=datatype)
 
 # simulation setting
 ideal_io = True
-gdc_list = [False]
+gdc_list = [True] 
 g_list = None  # default = None  // [0.1905, 25] 
-noise_list = [0, 0]  # pgm, read noise scale respectively
+noise_list = [1, 1]  # pgm, read noise scale respectively
 
 def sim_iter(model_name, n_rep_sw: int, n_rep_hw: int) -> list :
     
@@ -66,8 +66,7 @@ def sim_iter(model_name, n_rep_sw: int, n_rep_hw: int) -> list :
     # iteration
     for folder_name in name_list:
         print(f'\nfolder : {folder_name}')
-        print(f'model : {model_name}')
-        
+           
         """ load the model """
         folder_path = dir_name + folder_name
         
@@ -76,6 +75,7 @@ def sim_iter(model_name, n_rep_sw: int, n_rep_hw: int) -> list :
             print('Vanilla model loaded')
         else:
             model = torch.load(f'{folder_path}/{model_name}', map_location='cpu')
+            print(f'model : {model_name}')
         
         
         """ inference accuracy in sw """
