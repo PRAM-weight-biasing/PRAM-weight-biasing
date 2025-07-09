@@ -164,3 +164,4 @@ MNIST_data
 src/MNIST_MLP/debug.py
 results/MNIST_MLP
 download
+model
