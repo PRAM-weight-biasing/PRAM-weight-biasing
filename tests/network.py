@@ -29,9 +29,11 @@ from aihwkit.simulator.configs import (
     WeightClipType,
     WeightModifierType,
 )
-# from aihwkit.inference import PCMLikeNoiseModel, GlobalDriftCompensation
+from aihwkit.simulator.parameters.io import IOParameters
 from aihwkit.nn.conversion import convert_to_analog
 from aihwkit.simulator.presets import PCMPresetDevice, PCMPresetUnitCell
+
+# custmized noise model
 from aihwkit_test.customized_noise_pcm import TestNoiseModel
 
 
@@ -728,17 +730,76 @@ class InfModel(TrainModel):
         elif ideal_io == False: pass
 
         
-        """ Weight clipping & modifier parameter """
-        # rpu_config.modifier.type = WeightModifierType.ADD_NORMAL  # Fwd/bwd weight noise.
-        # rpu_config.modifier.std_dev = 0.1
-        # rpu_config.modifier.pdrop = 0.05   # Drop connect.
-        # rpu_config.forward.out_res = -1.0  # Turn off (output) ADC discretization.
-        # rpu_config.forward.w_noise_type = WeightNoiseType.ADDITIVE_CONSTANT
-        # rpu_config.forward.w_noise = 0.02  # Short-term w-noise.
-        # rpu_config.clip.type = WeightClipType.FIXED_VALUE
-        # rpu_config.clip.fixed_value = 1.0
-        # rpu_config.modifier.rel_to_actual_wmax = True 
+        return rpu_config
+    
+    
+    def SetConfig_io(
+        self, 
+        gdc: bool, 
+        ideal_io: bool = False,
+        inp_res_bit: float = 7, 
+        inp_noise: float = 0.01,            # small input Gaussian noise (std-dev)
+        out_res_bit: float = 9, 
+        out_noise: float = 0.06,            # output Gaussian noise (std-dev)
+        ):
         
+        rpu_config = InferenceRPUConfig()
+        rpu_config.device = PCMPresetUnitCell()      # paired PCM devices (Gp-Gm)
+        rpu_config.noise_model = TestNoiseModel(
+            g_max=self.gmax, 
+            g_min=self.gmin, 
+            prog_noise_scale=self.pgm_noise, 
+            read_noise_scale=self.read_noise, 
+            )  # customized noise model
+        rpu_config.mapping.weight_scaling_omega = 1.0  
+        
+        # global drift compensation
+        if gdc == True: pass
+        elif gdc == False:
+            rpu_config.drift_compensation = None   # apply GDC or not
+            
+        # ideal io
+        if ideal_io == True:
+            rpu_config.forward.is_perfect=True     # io parameters
+        elif ideal_io == False: pass
+
+        
+        """ IO parameter settings """
+        rpu_config.forward = IOParameters(
+            is_perfect=False,
+
+            # === DAC (Input side) ===
+            inp_bound=1.0,                           # DAC input range: [-1, 1]
+            inp_res= 1.0 / (2**inp_res_bit - 2),     # n-bit DAC quantization
+            inp_noise= inp_noise,
+            # inp_sto_round=False,          # enable stochastic rounding in DAC
+            # inp_asymmetry=0.0,            # 1% asymmetry in pos/neg DAC signal
+
+            # === ADC (Output side) ===
+            out_bound=12.0,                         # ADC saturation limit (max current)
+            out_res= 1.0 / (2**out_res_bit - 2),    # n-bit DAC quantization      
+            out_noise= out_noise,         
+            # out_noise_std=0.1,             # 10% std variation across outputs
+            # out_sto_round=False,            # enable stochastic rounding in ADC
+            # out_asymmetry=0.005,           # 0.5% asymmetry in negative pass output
+
+            # === Bound & Noise management (recommended for analog) : as default setting ===
+            # bound_management=BoundManagementType.ITERATIVE,
+            # noise_management=NoiseManagementType.ABS_MAX,
+
+            # === 기타 이상성 제거 : As default setting===
+            # w_noise=0.0,                   # no weight noise
+            # w_noise_type=WeightNoiseType.NONE,
+            # ir_drop=0.0,
+            # out_nonlinearity=0.0,
+            # r_series=0.0
+            
+            # from example (if needed)
+            # out_res = -1.0  # Turn off (output) ADC discretization.
+            # w_noise_type = WeightNoiseType.ADDITIVE_CONSTANT
+            # w_noise = 0.02  # Short-term w-noise.       
+        )
+
         return rpu_config
     
     def ConvertModel(self, gdc:bool, ideal_io:bool):
@@ -749,7 +810,32 @@ class InfModel(TrainModel):
         analog_model = convert_to_analog(self.model, pcm_config)
         
         return analog_model
-
+    
+    def ConvertModel_io(
+        self, 
+        gdc:bool, 
+        ideal_io:bool=False,
+        inp_res_bit: float = 7, 
+        inp_noise: float = 0.0,            
+        out_res_bit: float = 9, 
+        out_noise: float = 0.0,            
+        ):
+        # fix seed for reproducibility during mapping
+        myModule.fix_seed(seed=42)  
+        
+        pcm_config = self.SetConfig_io(
+            gdc=gdc, 
+            ideal_io=ideal_io,
+            inp_res_bit=inp_res_bit, 
+            inp_noise=inp_noise,            
+            out_res_bit=out_res_bit, 
+            out_noise=out_noise,           
+            )
+        analog_model = convert_to_analog(self.model, pcm_config)
+        
+        return analog_model
+    
+    
     def hw_EvalModel(self, analog_model, test_loader, t_inferences: list, n_reps: int) -> list :
         """_summary_
 
