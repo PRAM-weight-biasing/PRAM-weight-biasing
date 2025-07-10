@@ -51,7 +51,7 @@ _, testloader = myModule.set_dataloader(data_type="cifar10")
 
 # simulation setting
 ideal_io = False
-gdc_list = [True, False] 
+gdc_list = [False] 
 g_list = None  # default = None  // [0.1905, 25] 
 noise_list = [0, 0]  # pgm, read noise scale respectively
 io_res_list = [[6,7], [6,8], [6,9], [7,7], [7,8], [7,9], [8,7], [8,8],[8,9]]  # inp_res, out_res
@@ -161,13 +161,20 @@ for gdc in gdc_list:
 # model_name2 = 'FT_rev1.3_0.0001_50/best_model.pth'
 # print(model_name2)
 
-# for gdc in [True, False]:
-#     print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, G range={g_list}, noise={noise_list} ---')
-#     all_results2 = sim_iter(model_name2, n_rep_sw, n_rep_hw)
-    
-#     df2 = pd.DataFrame(all_results2, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
-#     df2.to_excel(f"evaluation_results_gdc_{gdc}_seedtest2.xlsx", index=False, engine='openpyxl')
-#     print(f"! Save the file 2 ! \n")
+for gdc in [True]:
+    for io_res2 in [[8,8], [8,9]]:
+        inp_res_bit, out_res_bit = io_res2
+        print(f'--- Ideal-IO:{ideal_io}, GDC:{gdc}, noise={noise_list}, io_res={io_res2} --- ')
+        all_results2 = sim_iter_io(model_name, n_rep_sw, n_rep_hw,
+                                    inp_res_bit=inp_res_bit,
+                                    out_res_bit=out_res_bit,
+                                    inp_noise=0.0,
+                                    out_noise=0.0,
+                                    )
+        
+        df2 = pd.DataFrame(all_results2, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
+        df2.to_excel(f"evaluation_results_{gdc}_{inp_res_bit}_{out_res_bit}.xlsx", index=False, engine='openpyxl')
+        print(f"\n! Save the file: evaluation_results_{gdc}_{inp_res_bit}_{out_res_bit}.xlsx\n")
 # # # -------------------------------
 
 # # # temporary code---------------
