@@ -143,7 +143,7 @@ class IOParameters(_PrintableMixin):
     noise_management: NoiseManagementType = NoiseManagementType.ABS_MAX
     """Type of noise management, see :class:`NoiseManagementType`."""
 
-    w_noise: float = 0.0
+    w_noise: float = 0.0   # can be used when applying noise injection (?)
     r"""Scale of output referred weight noise (:math:`\sigma_w`) for a given
     ``w_noise_type``."""
 
