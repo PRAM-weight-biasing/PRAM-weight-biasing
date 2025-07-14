@@ -4,7 +4,8 @@
 
 import os
 import sys
-import numpy as np 
+import numpy as np
+import pandas as pd 
 from tqdm import tqdm
 from typing import Optional
 
@@ -17,24 +18,19 @@ from aihwkit.nn.conversion import convert_to_analog
 from aihwkit.simulator.presets import PCMPresetUnitCell
 
 # custmized noise model
-from aihwkit_test.customized_noise_pcm import TestNoiseModel
+from noise_pcm import TestNoiseModel
 
 import myModule
 from train import TrainModel
-
-# get the parent directory and import the model
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(parent_dir)
-from model.PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 
 
 class InferenceModel(TrainModel):
     """ Class for inference model """
     
-    def __init__(self, model, model_name:str, datatype="cifar10", n_rep_sw: int=1, n_rep_hw: int=30):
+    def __init__(self, datatype="cifar10", n_rep_sw: int=1, n_rep_hw: int=30):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = model
-        self.model_name = model_name
+        self.model = None
+        self.model_name = None
         self.datatype = datatype
         _, self.testloader = myModule.set_dataloader(data_type=datatype)
         self.n_rep_sw = n_rep_sw
@@ -42,29 +38,77 @@ class InferenceModel(TrainModel):
      
         
     def run(self, 
-            g_list: Optional[list] = None,
-            noise_list: Optional[list]=None,
-            gdc: bool= True,
-            ideal_io: bool= False,
-            inp_res_bit=7, 
-            inp_noise=0.0, 
-            out_res_bit=9, 
-            out_noise=0.06
-            ) -> list:
+            model_dict: dict,
+            gdc_list: Optional[list]=[True],
+            io_list: Optional[list]=[False],
+            noise_list: Optional[list]=None,         # program, read noise scale
+            g_list: Optional[list] =None,           # [0.1905, 25] 
+            io_res_list: Optional[list] =None,      # inp_res, out_res
+            io_noise_list: Optional[list] = None ,    # inp_noise, out_noise
+            ) -> None:
         
         """ Run inference with different parameters """
+
+        # for loop for every input parameter
+        for io in io_list:
+            for gdc in gdc_list:
+                for noise in noise_list :
+                    for g in g_list or [None] :
+                        for io_res_bit in io_res_list or [None] :
+                            for io_noise in io_noise_list or [None] :
+                                print("DEBUG : 3")
+                                # print message
+                                msg = f"\nRunning inference with gdc={gdc} | ideal_io={io} | noise={noise}"
+                                if g is not None: msg += f"| g_list={g}"
+                                if io_res_bit is not None: msg += f"| inp_res_bit={io_res_bit}"
+                                if io_noise is not None: msg += f"| inp_noise={io_noise}"
+                                print(msg)
+                                
+                                self.run_one_condition(model_dict, gdc, io, noise, g, io_res_bit, io_noise)
+
+
+    def run_one_condition(self, model_dict, gdc, io, noise, g, io_res_bit, io_noise):
         
-        pass
+        # the arguments for 'sim_iter'
+        kwargs = {
+            "gdc": gdc,
+            "ideal_io": io,
+            "noise_list": noise,
+        }
+        if g is not None:
+            kwargs["g_list"] = g
 
-        # input paramter 마다 for 문 돌아가게 작성
-        # for gdc in gdc_list:
-        #     for io_res in io_res_list:
-        #         for noise in noise_list:
-        #             for g in g_list:
-        #                 self.sim_iter(g_list=g, noise_list=noise, gdc=gdc, ideal_io=ideal_io,
-        #                               inp_res_bit=inp_res_bit, inp_noise=inp_noise,
-        #                               out_res_bit=out_res_bit, out_noise=out_noise)
+        if io_res_bit is not None:
+            inp_res_bit, out_res_bit = io_res_bit
+            kwargs.update({
+                "inp_res_bit": inp_res_bit,
+                "out_res_bit": out_res_bit,
+            })
 
+        if io_noise is not None:
+            inp_noise, out_noise = io_noise
+            kwargs.update({
+                "inp_noise": inp_noise,
+                "out_noise": out_noise,
+            })
+
+        # model loop
+        all_results = []
+
+        for model_name, model in model_dict.items():
+            print(f"\n[Model: {model_name}] Running inference with gdc={gdc}, ideal_io={io}, noise={noise}")
+
+            self.model = model
+            self.model_name = model_name
+
+            results = self.sim_iter(**kwargs)
+            all_results.extend(results)
+
+        # Save results
+        filename = f"results_gdc-{gdc}_io-{io}_noise-{noise}.xlsx.xlsx"
+        df = pd.DataFrame(all_results, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
+        df.to_excel(filename, index=False, engine='openpyxl')
+        print(f"Saved: {filename}")
 
         
     def sim_iter(self,
@@ -80,7 +124,7 @@ class InferenceModel(TrainModel):
 
         """ Run inference with software and hardware """
         
-        all_results = []            
+        results = []            
             
         # inference accuracy in software
         self.SWinference()
@@ -99,11 +143,11 @@ class InferenceModel(TrainModel):
                                 )
     
         # Calculate statistics across repetitions
-        all_results = self.acc_over_time(t_inferences, rep_results, all_results)
+        results = self.acc_over_time(t_inferences, rep_results, results)
 
         myModule.clear_memory()
             
-        return all_results
+        return results
 
 
     def HWinference(
@@ -185,7 +229,7 @@ class InferenceModel(TrainModel):
         myModule.fix_seed()
 
         for i in range(self.n_rep_sw):
-            _, test_accuracy = self.eval_fn(self.model, self.testloader)
+            _, test_accuracy = self.get_eval_function()(self.model, self.testloader)
             inference_accuracy_values[i] = test_accuracy
         
         mean_acc = inference_accuracy_values.mean().item()
@@ -207,11 +251,10 @@ class InferenceModel(TrainModel):
             # fix seed for reproducibility when applying the gaussian noise
             torch.manual_seed(seed)
             torch.cuda.manual_seed(seed)
-            
-            analog_model.drift_analog_weights(t)             
+         
             # inference
             analog_model.drift_analog_weights(t)
-            _, test_accuracy = self.eval_fn(analog_model, self.testloader)
+            _, test_accuracy = self.get_eval_function()(analog_model, self.testloader)
             inference_accuracy_values[t_id, 0] = test_accuracy
                             
             results.append([t, test_accuracy])

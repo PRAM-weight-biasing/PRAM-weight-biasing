@@ -18,9 +18,8 @@ model_dict = ModelLoader.load_models(imported_model)
 
 
 # simulation setting
-io_res_list = [[7,9]],  #[[6,7], [6,8], [6,9], [7,7], [7,8], [7,9], [8,7], [8,8],[8,9]]  # inp_res, out_res
+io_res_list = [[7,9]]  #[[6,7], [6,8], [6,9], [7,7], [7,8], [7,9], [8,7], [8,8],[8,9]]  # inp_res, out_res
 io_noise_list = [[0.0, 0.0]]   # inp_noise, out_noise
-
 
 # Run simulation
 inference_model = InferenceModel(n_rep_hw=30)
