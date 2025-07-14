@@ -165,3 +165,4 @@ src/MNIST_MLP/debug.py
 results/MNIST_MLP
 download
 model
+src/dataset
