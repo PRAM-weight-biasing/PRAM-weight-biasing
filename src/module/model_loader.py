@@ -13,7 +13,7 @@ class ModelLoader:
 
     name_list = [
         'vanilla-Resnet18',
-        'Resnet18_p0.3',
+        # 'Resnet18_p0.3',
         # 'Resnet18_p0.4',
         # 'Resnet18_p0.5',
         # 'Resnet18_p0.6',
@@ -47,7 +47,7 @@ class ModelLoader:
         model_file = cls.get_model_file(imported_model)
         
         for model_type in cls.name_list:
-            print(f'\n Model Type : {model_type}')
+            print(f' Model Type : {model_type}')
 
             folder_path = os.path.join(cls.dir_name, model_type)
             model = cls.get_resnet18_model()

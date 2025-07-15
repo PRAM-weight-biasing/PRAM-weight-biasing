@@ -21,7 +21,7 @@ from aihwkit.simulator.presets import PCMPresetUnitCell
 from noise_pcm import TestNoiseModel
 
 import myModule
-from train import TrainModel
+from module.train import TrainModel
 
 
 class InferenceModel(TrainModel):
@@ -56,7 +56,6 @@ class InferenceModel(TrainModel):
                     for g in g_list or [None] :
                         for io_res_bit in io_res_list or [None] :
                             for io_noise in io_noise_list or [None] :
-                                print("DEBUG : 3")
                                 # print message
                                 msg = f"\nRunning inference with gdc={gdc} | ideal_io={io} | noise={noise}"
                                 if g is not None: msg += f"| g_list={g}"
@@ -96,7 +95,7 @@ class InferenceModel(TrainModel):
         all_results = []
 
         for model_name, model in model_dict.items():
-            print(f"\n[Model: {model_name}] Running inference with gdc={gdc}, ideal_io={io}, noise={noise}")
+            print(f"\n[Model: {model_name}]")
 
             self.model = model
             self.model_name = model_name
@@ -130,8 +129,7 @@ class InferenceModel(TrainModel):
         self.SWinference()
         
         # inference accuracy in hardware (simulator) 
-        t_inferences, rep_results = self.HWinference(self.model, self.testloader, 
-                                datatype=self.datatype,
+        t_inferences, rep_results = self.HWinference(
                                 g_list=g_list, 
                                 noise_list=noise_list,
                                 gdc=gdc, 
@@ -149,8 +147,77 @@ class InferenceModel(TrainModel):
             
         return results
 
-
     def HWinference(
+        self,
+        g_list: Optional[list] = None,
+        noise_list: Optional[list]=None,
+        gdc: bool= True,
+        ideal_io: bool= False,
+        inp_res_bit: float= 7,
+        inp_noise: float= 0.0,           
+        out_res_bit: float= 9,
+        out_noise: float= 0.06,
+        ) -> list:
+        
+        """ inference accuracy in hw (simulator) """ 
+        
+        analog_model = self.ConvertModel(
+            gdc=gdc,
+            ideal_io=ideal_io,
+            g_list=g_list,
+            noise_list=noise_list,
+            inp_res_bit=inp_res_bit,
+            inp_noise=inp_noise,
+            out_res_bit=out_res_bit,
+            out_noise=out_noise,
+            )              
+        
+        analog_model.to(self.device)
+        analog_model.eval()        
+        
+        rep_results = []  # Store results for each repetition
+        t_inferences = [
+            1,                         # 1 sec
+            60,                        # 1 min
+            100,
+            60 * 60,                   # 1 hour
+            24 * 60 * 60,              # 1 day
+            30 * 24 * 60 * 60,         # 1 month
+            12 * 30 * 24 * 60 * 60,    # 1 year
+            36 * 30 * 24 * 60 * 60,    # 3 year
+            1e9,
+            ]
+        
+        # for rep in range(n_rep_hw):
+        for rep in tqdm(range(self.n_rep_hw), desc='Inference Progress', 
+                bar_format='{l_bar}{bar:30}{r_bar}{bar:-10b}'):
+            
+            # Set different seed for each repetition
+            current_seed = 42 + rep
+            myModule.fix_seed(current_seed)     
+            
+            results = []
+            for t_id, t in enumerate(t_inferences):
+                
+                 # fix seed for reproducibility when applying the gaussian noise
+                torch.manual_seed(current_seed)
+                torch.cuda.manual_seed(current_seed)
+                # myModule.fix_seed(current_seed + t_id)
+                
+                # inference
+                analog_model.drift_analog_weights(t)
+                _, test_accuracy = self.get_eval_function()(analog_model, self.testloader)
+                results.append([t, test_accuracy])
+                print(f"[DEBUG]: rep {rep}, t {t}, acc {test_accuracy}")
+                                 
+            rep_results.append(results)
+            
+            myModule.clear_memory()
+            
+        return t_inferences, rep_results
+
+
+    def __HWinference(
         self,
         g_list: Optional[list] = None,
         noise_list: Optional[list]=None,
@@ -166,14 +233,7 @@ class InferenceModel(TrainModel):
         
         rep_results = []  # Store results for each repetition
         
-        # for rep in range(n_rep_hw):
-        for rep in tqdm(range(self.n_rep_hw), desc='Inference Progress', 
-                bar_format='{l_bar}{bar:30}{r_bar}{bar:-10b}'):
-            
-            # Set different seed for each repetition
-            current_seed = 42 + rep
-            
-            analog_model = self.ConvertModel(gdc=gdc, 
+        analog_model = self.ConvertModel(gdc=gdc, 
                                              ideal_io=ideal_io,
                                              g_list=g_list,
                                              noise_list=noise_list,
@@ -181,7 +241,14 @@ class InferenceModel(TrainModel):
                                              inp_noise=inp_noise,
                                              out_res_bit=out_res_bit,
                                              out_noise=out_noise,
-                                             )                                       
+                                             )    
+        
+        # for rep in range(n_rep_hw):
+        for rep in tqdm(range(self.n_rep_hw), desc='Inference Progress', 
+                bar_format='{l_bar}{bar:30}{r_bar}{bar:-10b}'):
+            
+            # Set different seed for each repetition
+            current_seed = 42 + rep                                   
             
             # Single inference run with current seed
             t_inferences = [1,                         # 1 sec
@@ -197,7 +264,7 @@ class InferenceModel(TrainModel):
             single_result = self.HWinference_single(analog_model, t_inferences, seed=current_seed)
             rep_results.append(single_result)
             
-            # myModule.clear_memory()
+            myModule.clear_memory()
             
         return t_inferences, rep_results
     
@@ -258,6 +325,7 @@ class InferenceModel(TrainModel):
             inference_accuracy_values[t_id, 0] = test_accuracy
                             
             results.append([t, test_accuracy])
+            print(f"[DEBUG]: test acc : {test_accuracy}")
             
         return results
     
