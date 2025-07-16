@@ -15,7 +15,7 @@ from torch.optim import Adam, lr_scheduler
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 # customized 
-import myModule
+import module.myModule as myModule
 
 
 class TrainModel:

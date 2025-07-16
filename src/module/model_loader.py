@@ -3,7 +3,7 @@ import sys
 import torch
 
 # get the parent directory and import the model
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.append(parent_dir)
 from model.PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 
@@ -13,7 +13,7 @@ class ModelLoader:
 
     name_list = [
         'vanilla-Resnet18',
-        # 'Resnet18_p0.3',
+        'Resnet18_p0.3',
         # 'Resnet18_p0.4',
         # 'Resnet18_p0.5',
         # 'Resnet18_p0.6',

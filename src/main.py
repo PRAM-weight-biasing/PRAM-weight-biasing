@@ -3,9 +3,9 @@
 """ inference tests over time to evaluate the impact of resistance drift """
 
 # import customized files
-import myModule
-from model_loader import ModelLoader 
-from inference import InferenceModel
+import module.myModule as myModule
+from module.model_loader import ModelLoader 
+from module.inference import InferenceModel
 
 
 # Setting
@@ -25,10 +25,10 @@ io_noise_list = [[0.0, 0.0]]   # inp_noise, out_noise
 inference_model = InferenceModel(n_rep_hw=30)
 inference_model.run(
     model_dict=model_dict,
-    gdc_list= [True, False],
-    io_list= [False],
-    noise_list= [0, 0],           
-    g_list= None,                 
+    gdc_list= [True],
+    io_list= [True],
+    noise_list= [[0,0]],           
+    g_list= [[0.1, 25]],                 
     io_res_list=io_res_list,      
     io_noise_list=io_noise_list, 
     )
