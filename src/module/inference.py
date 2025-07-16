@@ -18,7 +18,7 @@ from aihwkit.nn.conversion import convert_to_analog
 from aihwkit.simulator.presets import PCMPresetUnitCell
 
 # custmized noise model
-from module.noise_pcm import TestNoiseModel
+from module.noise_pcm import TestNoiseModel, MappingNoiseModel
 
 import module.myModule as myModule
 from module.train import TrainModel
@@ -27,7 +27,7 @@ from module.train import TrainModel
 class InferenceModel(TrainModel):
     """ Class for inference model """
     
-    def __init__(self, datatype="cifar10", n_rep_sw: int=1, n_rep_hw: int=30):
+    def __init__(self, datatype="cifar10", n_rep_sw: int=1, n_rep_hw: int=30, mapping_method="naive"):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = None
         self.model_name = None
@@ -35,6 +35,7 @@ class InferenceModel(TrainModel):
         _, self.testloader = myModule.set_dataloader(data_type=datatype)
         self.n_rep_sw = n_rep_sw
         self.n_rep_hw = n_rep_hw
+        self.mapping_method = mapping_method
      
         
     def run(self, 
@@ -104,7 +105,7 @@ class InferenceModel(TrainModel):
             all_results.extend(results)
 
         # Save results
-        filename = f"results_gdc-{gdc}_io-{io}_noise-{noise}.xlsx.xlsx"
+        filename = f"../results/results_gdc-{gdc}_io-{io}_noise-{noise}.xlsx.xlsx"
         df = pd.DataFrame(all_results, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
         df.to_excel(filename, index=False, engine='openpyxl')
         print(f"Saved: {filename}")
@@ -306,8 +307,8 @@ class InferenceModel(TrainModel):
         # fix seed for reproducibility during mapping
         myModule.fix_seed(seed=42)  
         
-        pcm_config = self.SetConfig(
-            gdc=gdc, 
+        config_args = dict(
+            gdc=gdc,
             ideal_io=ideal_io,
             g_min=g_list[0] if g_list is not None else None,
             g_max=g_list[1] if g_list is not None else None,
@@ -317,7 +318,14 @@ class InferenceModel(TrainModel):
             inp_noise=inp_noise,
             out_res_bit=out_res_bit,
             out_noise=out_noise
-            )
+        )
+
+        # Set the mapping methods       
+        if self.mapping_method == "naive":
+            pcm_config = self.SetConfig(**config_args)
+        elif self.mapping_method == "BestMapping":
+            # for customized Gp-Gm mapping
+            pcm_config = self.MappingSetConfig(**config_args)
         
         analog_model = convert_to_analog(self.model, pcm_config)
         
@@ -397,4 +405,81 @@ class InferenceModel(TrainModel):
             )
 
         return rpu_config
-    
+
+
+    def MappingSetConfig(
+        self, 
+        gdc: bool, 
+        ideal_io: bool = False,
+        g_max: Optional[float] = None,
+        g_min: Optional[float] = None,
+        prog_noise_scale: Optional[float] = None,
+        read_noise_scale: Optional[float] = None,
+        inp_res_bit: float = 7, 
+        inp_noise: float = 0.0,           
+        out_res_bit: float = 9, 
+        out_noise: float = 0.06,
+        ):       
+        
+        from module.g_converter import MappedConductanceConverter
+        
+        rpu_config = InferenceRPUConfig()
+        rpu_config.device = PCMPresetUnitCell()      # paired PCM devices (Gp-Gm)
+        rpu_config.mapping.weight_scaling_omega = 1.0  
+        
+        # customized noise model
+        rpu_config.noise_model = MappingNoiseModel(
+            g_max=g_max, 
+            g_min=g_min,
+            prog_noise_scale=prog_noise_scale,
+            read_noise_scale=read_noise_scale,
+            g_converter=MappedConductanceConverter(g_max=g_max, g_min=g_min),  # custom Gp-Gm mapping
+            )  
+        
+        # global drift compensation
+        if gdc == True: pass
+        elif gdc == False:
+            rpu_config.drift_compensation = None   
+            
+        # IO parameter settings
+        if ideal_io == True:
+            rpu_config.forward.is_perfect=True   
+             
+        elif ideal_io == False: 
+            # set parameters for non-ideal IO
+            rpu_config.forward = IOParameters(
+                is_perfect=False,
+
+                # === DAC (Input side) ===
+                inp_bound=1.0,                           # DAC input range: [-1, 1]
+                inp_res= 1.0 / (2**inp_res_bit - 2),     # n-bit DAC quantization
+                inp_noise= inp_noise,
+                # inp_sto_round=False,          # enable stochastic rounding in DAC
+                # inp_asymmetry=0.0,            # 1% asymmetry in pos/neg DAC signal
+
+                # === ADC (Output side) ===
+                out_bound=12.0,                         # ADC saturation limit (max current)
+                out_res= 1.0 / (2**out_res_bit - 2),    # n-bit DAC quantization      
+                out_noise= out_noise,         
+                # out_noise_std=0.1,             # 10% std variation across outputs
+                # out_sto_round=False,            # enable stochastic rounding in ADC
+                # out_asymmetry=0.005,           # 0.5% asymmetry in negative pass output
+
+                # === Bound & Noise management (recommended for analog) : As default setting ===
+                # bound_management=BoundManagementType.ITERATIVE,
+                # noise_management=NoiseManagementType.ABS_MAX,
+
+                # === etc. non-ideality : As default setting===
+                # w_noise=0.0,                   
+                # w_noise_type=WeightNoiseType.NONE,
+                # ir_drop=0.0,
+                # out_nonlinearity=0.0,
+                # r_series=0.0
+                
+                # from example (if needed)
+                # out_res = -1.0  # Turn off (output) ADC discretization.
+                # w_noise_type = WeightNoiseType.ADDITIVE_CONSTANT
+                # w_noise = 0.02  # Short-term w-noise.       
+            )
+
+        return rpu_config 
