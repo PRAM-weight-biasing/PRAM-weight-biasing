@@ -27,36 +27,48 @@ from module.train import TrainModel
 class InferenceModel(TrainModel):
     """ Class for inference model """
     
-    def __init__(self, datatype="cifar10", n_rep_sw: int=1, n_rep_hw: int=30, mapping_method="naive"):
+    def __init__(
+        self, 
+        model_dict: dict,
+        datatype="cifar10", 
+        n_rep_sw: int=1, 
+        n_rep_hw: int=30, 
+        mapping_method="naive",
+        gdc_list: Optional[list]=[True],
+        io_list: Optional[list]=[False],
+        noise_list: Optional[list]=None,         
+        g_list: Optional[list] =None,             
+        io_res_list: Optional[list] =None,       
+        io_noise_list: Optional[list] = None ,   
+        
+    ):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = None
         self.model_name = None
+        self.model_dict = model_dict
         self.datatype = datatype
         _, self.testloader = myModule.set_dataloader(data_type=datatype)
         self.n_rep_sw = n_rep_sw
         self.n_rep_hw = n_rep_hw
         self.mapping_method = mapping_method
+        self.gdc_list = gdc_list
+        self.io_list = io_list
+        self.noise_list = noise_list            # [program, read noise scale]
+        self.g_list = g_list                    # [gmin, gmax] 
+        self.io_res_list = io_res_list          # [inp_res, out_res]
+        self.io_noise_list = io_noise_list      # [inp_noise, out_noise]
      
         
-    def run(self, 
-            model_dict: dict,
-            gdc_list: Optional[list]=[True],
-            io_list: Optional[list]=[False],
-            noise_list: Optional[list]=None,          # program, read noise scale
-            g_list: Optional[list] =None,             # [0.1905, 25] 
-            io_res_list: Optional[list] =None,        # inp_res, out_res
-            io_noise_list: Optional[list] = None ,    # inp_noise, out_noise
-            ) -> None:
-        
+    def run(self) -> None:     
         """ Run inference with different parameters """
 
         # for loop for every input parameter
-        for io in io_list:
-            for gdc in gdc_list:
-                for noise in noise_list :
-                    for g in g_list or [None] :
-                        for io_res_bit in io_res_list or [None] :
-                            for io_noise in io_noise_list or [None] :
+        for io in self.io_list:
+            for gdc in self.gdc_list:
+                for noise in self.noise_list :
+                    for g in self.g_list or [None] :
+                        for io_res_bit in self.io_res_list or [None] :
+                            for io_noise in self.io_noise_list or [None] :
                                 # print message
                                 msg = f"\nRunning inference with gdc={gdc} | ideal_io={io} | noise={noise}"
                                 if g is not None: msg += f"| g_list={g}"
@@ -64,10 +76,10 @@ class InferenceModel(TrainModel):
                                 if io_noise is not None: msg += f"| inp_noise={io_noise}"
                                 print(msg)
                                 
-                                self.run_one_condition(model_dict, gdc, io, noise, g, io_res_bit, io_noise)
+                                self.run_one_condition(gdc, io, noise, g, io_res_bit, io_noise)
 
 
-    def run_one_condition(self, model_dict, gdc, io, noise, g, io_res_bit, io_noise):
+    def run_one_condition(self, gdc, io, noise, g, io_res_bit, io_noise):
         
         # the arguments for 'sim_iter'
         kwargs = {
@@ -95,7 +107,7 @@ class InferenceModel(TrainModel):
         # model loop
         all_results = []
 
-        for model_name, model in model_dict.items():
+        for model_name, model in self.model_dict.items():
             print(f"\n[Model: {model_name}]")
 
             self.model = model
@@ -105,7 +117,7 @@ class InferenceModel(TrainModel):
             all_results.extend(results)
 
         # Save results
-        filename = f"../results/results_gdc-{gdc}_io-{io}_noise-{noise}.xlsx.xlsx"
+        filename = f"../results/results_{self.mapping_method}_gdc-{gdc}_io-{io}_noise-{noise}.xlsx.xlsx"
         df = pd.DataFrame(all_results, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
         df.to_excel(filename, index=False, engine='openpyxl')
         print(f"Saved: {filename}")
