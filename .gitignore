@@ -166,3 +166,4 @@ results/MNIST_MLP
 download
 model
 src/dataset
+results
