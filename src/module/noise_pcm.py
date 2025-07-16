@@ -30,6 +30,8 @@ from aihwkit.inference.noise.base import BaseNoiseModel
 from aihwkit.inference.converter.base import BaseConductanceConverter
 from aihwkit.inference.converter.conductance import SinglePairConductanceConverter
 
+
+
 _ZERO_CLIP = 1e-7
 
 
@@ -89,6 +91,11 @@ class TestNoiseModel(BaseNoiseModel):
         self.g_max = getattr(self.g_converter, "g_max", g_max)
         if self.g_max is None:
             raise ValueError("g_max cannot be established from g_converter")
+        
+        self.g_min = getattr(self.g_converter, "g_min", g_min) 
+        if self.g_min is None:
+            
+            raise ValueError("g_min cannot be established from g_converter")
 
         if prog_coeff_g_max_reference is None:
             self.prog_coeff_g_max_reference = self.g_max
@@ -135,8 +142,8 @@ class TestNoiseModel(BaseNoiseModel):
     @no_grad()
     def generate_drift_coefficients(self, g_target: Tensor) -> Tensor:
         """Return drift coefficients ``nu`` based on PCM measurements."""
-        g_relative = clamp(torch_abs(g_target / self.g_max), min=_ZERO_CLIP)  
-        # g_relative = clamp(torch_abs((g_target - self.g_min) / (self.g_max-self.g_min)), min=_ZERO_CLIP)  # revision 
+        # g_relative = clamp(torch_abs(g_target / self.g_max), min=_ZERO_CLIP)  
+        g_relative = clamp(torch_abs((g_target - self.g_min) / (self.g_max-self.g_min)), min=_ZERO_CLIP)  # revision 
         
         # import torch
         # print(f"[DEBUG] torch.initial seed : {torch.initial_seed()}")
@@ -211,3 +218,61 @@ class TestNoiseModel(BaseNoiseModel):
             g_final = g_prog
 
         return g_final.clamp(min=0.0)
+
+class MappingNoiseModel(TestNoiseModel):
+    """_summary_
+
+    Args:
+        TestNoiseModel (_type_): _description_
+    """
+
+    def __init__(
+        self,
+        g_converter: Optional[BaseConductanceConverter] = None,
+        g_max: Optional[float] = None,
+        g_min: Optional[float] = None,
+        t_0: float = 20.0,
+        prog_noise_scale: float = 1.0,
+        read_noise_scale: float = 1.0,
+        drift_scale: float = 1.0,
+        ):
+        
+        super().__init__(
+            g_converter=g_converter,
+            g_max=g_max,
+            g_min=g_min,
+            t_0=t_0,
+            prog_noise_scale=prog_noise_scale,
+            read_noise_scale=read_noise_scale,
+            drift_scale=drift_scale,
+        )
+        
+    @no_grad()
+    def generate_drift_coefficients(self, g_target: Tensor) -> Tensor:
+        """Return drift coefficients ``nu`` based on PCM measurements."""
+        # g_relative = clamp(torch_abs(g_target / self.g_max), min=_ZERO_CLIP)  
+        g_relative = clamp(torch_abs((g_target-self.g_min) / (self.g_max-self.g_min)), min=_ZERO_CLIP)  # for [0,1] range 
+        
+        
+        # gt should be normalized wrt g_max
+        """ mu_drift """
+        mu_orig = (-0.0155 * log(g_relative) + 0.0244).clamp(min=0.049, max=0.1)
+        mu_log_rev = (-0.0155 * log(g_relative+0.00762) + 0.0244)    # maximum value=0.1
+        
+        mu_drift = mu_log_rev  # final
+        
+        
+        """ sig_drift """
+        sig_orig = (-0.0125 * log(g_relative) - 0.0059).clamp(min=0.008, max=0.045)
+        sig_zero = 0
+        
+        sig_drift = sig_orig  # final
+        
+        
+        """ final nu """
+        nu_drift = torch_abs(mu_drift + sig_drift * randn_like(g_relative)).clamp(min=0.0)
+        
+
+        return nu_drift * self.drift_scale
+
+    
