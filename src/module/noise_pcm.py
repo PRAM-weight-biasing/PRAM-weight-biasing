@@ -124,14 +124,23 @@ class TestNoiseModel(BaseNoiseModel):
         sig_prog *= self.g_max / self.prog_coeff_g_max_reference  # type: ignore
         g_prog = g_target + self.prog_noise_scale * sig_prog * randn_like(g_target)
         g_prog.clamp_(min=0.0)  # no negative conductances allowed
+        
+        # Debug: 첫 번째 값만 1번만 출력
+        # if not hasattr(self, "_print_once_program"):
+        #     print("[DEBUG] First g_prog value:", g_prog.view(-1)[0].item())
+        #     self._print_once_program = True
 
         return g_prog
 
     @no_grad()
     def generate_drift_coefficients(self, g_target: Tensor) -> Tensor:
         """Return drift coefficients ``nu`` based on PCM measurements."""
-        g_relative = clamp(torch_abs(g_target / self.g_max), min=_ZERO_CLIP)
-
+        g_relative = clamp(torch_abs(g_target / self.g_max), min=_ZERO_CLIP)  
+        # g_relative = clamp(torch_abs((g_target - self.g_min) / (self.g_max-self.g_min)), min=_ZERO_CLIP)  # revision 
+        
+        # import torch
+        # print(f"[DEBUG] torch.initial seed : {torch.initial_seed()}")
+        
         # gt should be normalized wrt g_max
         """ mu_drift """
         mu_orig = (-0.0155 * log(g_relative) + 0.0244).clamp(min=0.049, max=0.1)
@@ -154,10 +163,6 @@ class TestNoiseModel(BaseNoiseModel):
         
         mu_drift = mu_log_rev  # final
         
-        # print("[DEBUG] [mu_drift sample] :", mu_drift.view(-1)[:5])
-        # print("[DEBUG] mu_default", mu_log_rev.view(-1)[:5])
-        # print("[DEBUG] mu_test3", mu_test3.view(-1)[:5])
-        
         
         """ sig_drift """
         sig_orig = (-0.0125 * log(g_relative) - 0.0059).clamp(min=0.008, max=0.045)
@@ -166,6 +171,11 @@ class TestNoiseModel(BaseNoiseModel):
         sig_drift = sig_orig  # final
         
         nu_drift = torch_abs(mu_drift + sig_drift * randn_like(g_relative)).clamp(min=0.0)
+        
+        # debugging
+        # if not hasattr(self, "_print_once_drift"):
+        #     print("[DEBUG] First nu_drift value:", nu_drift.view(-1)[0].item())
+        #     self._print_once_drift = True
 
         return nu_drift * self.drift_scale
 
@@ -192,6 +202,11 @@ class TestNoiseModel(BaseNoiseModel):
             g_final = g_drift + torch_abs(g_drift) * self.read_noise_scale * sig_noise * randn_like(
                 g_prog
             )
+            
+            # if not hasattr(self, "_print_once_read"):
+            #     print("[DEBUG] First sig_noise value:", sig_noise.view(-1)[0].item())
+            #     self._print_once_read = True
+                
         else:
             g_final = g_prog
 

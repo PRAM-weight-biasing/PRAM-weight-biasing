@@ -18,9 +18,9 @@ from aihwkit.nn.conversion import convert_to_analog
 from aihwkit.simulator.presets import PCMPresetUnitCell
 
 # custmized noise model
-from noise_pcm import TestNoiseModel
+from module.noise_pcm import TestNoiseModel
 
-import myModule
+import module.myModule as myModule
 from module.train import TrainModel
 
 
@@ -41,9 +41,9 @@ class InferenceModel(TrainModel):
             model_dict: dict,
             gdc_list: Optional[list]=[True],
             io_list: Optional[list]=[False],
-            noise_list: Optional[list]=None,         # program, read noise scale
-            g_list: Optional[list] =None,           # [0.1905, 25] 
-            io_res_list: Optional[list] =None,      # inp_res, out_res
+            noise_list: Optional[list]=None,          # program, read noise scale
+            g_list: Optional[list] =None,             # [0.1905, 25] 
+            io_res_list: Optional[list] =None,        # inp_res, out_res
             io_noise_list: Optional[list] = None ,    # inp_noise, out_noise
             ) -> None:
         
@@ -160,21 +160,7 @@ class InferenceModel(TrainModel):
         ) -> list:
         
         """ inference accuracy in hw (simulator) """ 
-        
-        analog_model = self.ConvertModel(
-            gdc=gdc,
-            ideal_io=ideal_io,
-            g_list=g_list,
-            noise_list=noise_list,
-            inp_res_bit=inp_res_bit,
-            inp_noise=inp_noise,
-            out_res_bit=out_res_bit,
-            out_noise=out_noise,
-            )              
-        
-        analog_model.to(self.device)
-        analog_model.eval()        
-        
+               
         rep_results = []  # Store results for each repetition
         t_inferences = [
             1,                         # 1 sec
@@ -196,78 +182,40 @@ class InferenceModel(TrainModel):
             current_seed = 42 + rep
             myModule.fix_seed(current_seed)     
             
+            analog_model = self.ConvertModel(
+            gdc=gdc,
+            ideal_io=ideal_io,
+            g_list=g_list,
+            noise_list=noise_list,
+            inp_res_bit=inp_res_bit,
+            inp_noise=inp_noise,
+            out_res_bit=out_res_bit,
+            out_noise=out_noise,
+            )              
+        
+            analog_model.to(self.device)
+            analog_model.eval() 
+            
+            # Inference with different time points
             results = []
             for t_id, t in enumerate(t_inferences):
                 
                  # fix seed for reproducibility when applying the gaussian noise
                 torch.manual_seed(current_seed)
                 torch.cuda.manual_seed(current_seed)
-                # myModule.fix_seed(current_seed + t_id)
                 
                 # inference
                 analog_model.drift_analog_weights(t)
+                                
                 _, test_accuracy = self.get_eval_function()(analog_model, self.testloader)
                 results.append([t, test_accuracy])
-                print(f"[DEBUG]: rep {rep}, t {t}, acc {test_accuracy}")
-                                 
+                                
             rep_results.append(results)
             
             myModule.clear_memory()
             
         return t_inferences, rep_results
 
-
-    def __HWinference(
-        self,
-        g_list: Optional[list] = None,
-        noise_list: Optional[list]=None,
-        gdc: bool= True,
-        ideal_io: bool= False,
-        inp_res_bit: float= 7,
-        inp_noise: float= 0.0,           
-        out_res_bit: float= 9,
-        out_noise: float= 0.06,
-        ) -> list:
-        
-        """ inference accuracy in hw (simulator) """ 
-        
-        rep_results = []  # Store results for each repetition
-        
-        analog_model = self.ConvertModel(gdc=gdc, 
-                                             ideal_io=ideal_io,
-                                             g_list=g_list,
-                                             noise_list=noise_list,
-                                             inp_res_bit=inp_res_bit,
-                                             inp_noise=inp_noise,
-                                             out_res_bit=out_res_bit,
-                                             out_noise=out_noise,
-                                             )    
-        
-        # for rep in range(n_rep_hw):
-        for rep in tqdm(range(self.n_rep_hw), desc='Inference Progress', 
-                bar_format='{l_bar}{bar:30}{r_bar}{bar:-10b}'):
-            
-            # Set different seed for each repetition
-            current_seed = 42 + rep                                   
-            
-            # Single inference run with current seed
-            t_inferences = [1,                         # 1 sec
-                            60,                        # 1 min
-                            100,
-                            60 * 60,                   # 1 hour
-                            24 * 60 * 60,              # 1 day
-                            30 * 24 * 60 * 60,         # 1 month
-                            12 * 30 * 24 * 60 * 60,    # 1 year
-                            36 * 30 * 24 * 60 * 60,    # 3 year
-                            1e9,
-                            ]
-            single_result = self.HWinference_single(analog_model, t_inferences, seed=current_seed)
-            rep_results.append(single_result)
-            
-            myModule.clear_memory()
-            
-        return t_inferences, rep_results
-    
     
     def acc_over_time(self, t_inferences, rep_results, all_results) -> list:
         """ Calculate statistics across repetitions"""
@@ -306,7 +254,7 @@ class InferenceModel(TrainModel):
                 f"Test set accuracy (%) in s/w: \t mean: {mean_acc :.6f}, \t std: {std_acc :.6f}"
             )
     
-    def HWinference_single(self, analog_model, t_inferences, seed=42):
+    def __HWinference_single(self, analog_model, t_inferences, seed=42):
         """ Evaluate the model in hardware for a single inference """
         analog_model.to(self.device)
         analog_model.eval()
@@ -325,7 +273,7 @@ class InferenceModel(TrainModel):
             inference_accuracy_values[t_id, 0] = test_accuracy
                             
             results.append([t, test_accuracy])
-            print(f"[DEBUG]: test acc : {test_accuracy}")
+            # print(f"[DEBUG]: test acc : {test_accuracy}")
             
         return results
     
