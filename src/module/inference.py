@@ -39,8 +39,8 @@ class InferenceModel(TrainModel):
         noise_list: Optional[list]=None,         
         g_list: Optional[list] =None,             
         io_res_list: Optional[list] =None,       
-        io_noise_list: Optional[list] = None ,   
-        
+        io_noise_list: Optional[list] = None,   
+        distortion_f: Optional[float] = None,
     ):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = None
@@ -57,6 +57,7 @@ class InferenceModel(TrainModel):
         self.g_list = g_list                    # [gmin, gmax] 
         self.io_res_list = io_res_list          # [inp_res, out_res]
         self.io_noise_list = io_noise_list      # [inp_noise, out_noise]
+        self.distortion_f = distortion_f
      
         
     def run(self) -> None:     
@@ -219,19 +220,21 @@ class InferenceModel(TrainModel):
                 
                 # inference
                 analog_model.drift_analog_weights(t)
-                     
+                
                 """ Change drift compensation factor alpha ------------"""
                  # 원래 자동 보정된 alpha 출력
                 # for tile in analog_model.analog_tiles():
                 #     print(f"[Before override] t={t}, auto alpha = {tile.alpha.item():.4f}")
 
-                # 수동 보정 적용
-                tau = 1 + t/20   
-                nu_drift = 0.024282    # nu_max 
-                manual_alpha = tau**nu_drift
-                for tile in analog_model.analog_tiles():
-                    tile.alpha = torch.tensor(manual_alpha, device=tile.alpha.device)
-                    # print(f"[After override]  t={t}, manual alpha = {tile.alpha.item():.4f}")
+                #  change the amplification(drift compensation) factor
+                if self.mapping_method=="naive" : pass
+                else:
+                    tau = 1 + t/20         # (t0+t)/t0
+                    nu_drift = 0.024282    # nu_max 
+                    manual_alpha = tau**nu_drift
+                    for tile in analog_model.analog_tiles():
+                        tile.alpha = torch.tensor(manual_alpha, device=tile.alpha.device)
+                        # print(f"[After override]  t={t}, manual alpha = {tile.alpha.item():.4f}")
                     
                 """ -------------- end ------------------------"""
                             
@@ -352,7 +355,7 @@ class InferenceModel(TrainModel):
         # Set the mapping methods       
         if self.mapping_method == "naive":
             pcm_config = self.SetConfig(**config_args)
-        elif self.mapping_method == "BestMapping":
+        elif self.mapping_method == "myMapping":
             # for customized Gp-Gm mapping
             pcm_config = self.MappingSetConfig(**config_args)
         
@@ -466,7 +469,7 @@ class InferenceModel(TrainModel):
             prog_noise_scale=prog_noise_scale,
             read_noise_scale=read_noise_scale,
             drift_noise_scale=drift_noise_scale,
-            g_converter=MappedConductanceConverter(g_max=g_max, g_min=g_min),  # custom Gp-Gm mapping
+            g_converter=MappedConductanceConverter(g_max=g_max, g_min=g_min, distortion_f=self.distortion_f), 
             )  
         
         # global drift compensation

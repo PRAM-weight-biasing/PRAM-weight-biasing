@@ -17,6 +17,8 @@ from aihwkit.inference.converter.conductance.py
 from typing import Dict, List, Optional, Tuple
 
 from torch import abs as torch_abs
+from torch import where as torch_where
+from torch import sign as torch_sign
 from torch import Tensor, zeros_like, from_numpy, linspace, allclose
 from torch.autograd import no_grad
 
@@ -92,8 +94,13 @@ class MappedConductanceConverter(SinglePairConductanceConverter):
     and negative weights, respectively, where mapping method of each device is customized.
     """
     
-    def __init__(self, g_max: Optional[float] = None, g_min: Optional[float] = None):
+    def __init__(self, 
+                 g_max: Optional[float] = None, 
+                 g_min: Optional[float] = None,
+                 distortion_f: Optional[float] = None):
         super().__init__(g_max, g_min)
+        
+        self.distortion_f = 0.0 if distortion_f is None else distortion_f
     
     @no_grad()
     def convert_to_conductances(self, weights: Tensor) -> Tuple[List[Tensor], Dict]:
@@ -101,10 +108,25 @@ class MappedConductanceConverter(SinglePairConductanceConverter):
         abs_max = torch_abs(weights).max()
         scale_ratio = 1.0 / abs_max.clamp(min=_ZERO_CLIP)
         scaled_weights = weights * scale_ratio
+        
+        abs_w = torch_abs(scaled_weights)
 
         # mapping equation of gp, gm
-        gp = 2.62671707 * scaled_weights**2 + 12.18137246 * scaled_weights + 10.02103784
-        gm = 2.62671707 * scaled_weights**2 - 12.18137246 * scaled_weights + 10.02103784
+        # gp = 2.62671707 * scaled_weights**2 + 12.18137246 * scaled_weights + 10.02103784   # best mapping
+        # gm = 2.62671707 * scaled_weights**2 - 12.18137246 * scaled_weights + 10.02103784   # best mapping
+        
+        # coefficients
+        coeff_a = 2.62671707
+        coeff_b = 12.18137246
+        coeff_c = 10.02103784
+        
+        g_minor = coeff_a * abs_w**2 - coeff_b * abs_w + coeff_c 
+        g_minor = (1 - self.distortion_f) * g_minor
+        g_major = (abs_w + g_minor / (self.g_max - self.g_min)) * (self.g_max - self.g_min)
+
+        gp = torch_where(scaled_weights >= 0, g_major, g_minor)
+        gm = torch_where(scaled_weights >= 0, g_minor, g_major)
+        
 
         conductances = [gp, gm]
         params = {"scale_ratio": scale_ratio}  # for reverse conversion
@@ -120,7 +142,15 @@ class MappedConductanceConverter(SinglePairConductanceConverter):
 
         gp, gm = conductances
         
-        scaled_weights = (gp - gm) / (2 * 12.18137246)
+        abs_w_pos = (gp - gm) / (self.g_max - self.g_min)
+        abs_w_neg = -(gp - gm) / (self.g_max - self.g_min)
+
+        sign_w = torch_where(gp >= gm, 1.0, -1.0)
+        abs_w = torch_where(gp >= gm, abs_w_pos, abs_w_neg)
+
+        scaled_weights = sign_w * abs_w
+        
+        # scaled_weights = (gp - gm) / (2 * 12.18137246)  # best mapping
         weights = scaled_weights / params["scale_ratio"]
 
         return weights
