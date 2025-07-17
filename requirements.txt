@@ -24,3 +24,10 @@ rich            # beautiful text formatting in terminal
 pytest          # tests
 matplotlib      # python matlab-like figure plotter
 pandas          # pandas library for data management
+
+
+# torch ; install torch < 2.4.1
+https://pytorch.org/get-started/previous-versions/
+
+# aihwkit ; install th GPU version
+https://aihwkit.readthedocs.io/en/latest/advanced_install.html
