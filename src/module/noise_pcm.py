@@ -178,7 +178,7 @@ class TestNoiseModel(BaseNoiseModel):
         sig_const = 0.008
         sig_zero = 0
         
-        sig_drift = sig_orig + self.drift_noise_scale  # final
+        sig_drift = sig_orig * self.drift_noise_scale  # final
         
         """ final nu """
         nu_drift = torch_abs(mu_drift + sig_drift * randn_like(g_relative)).clamp(min=0.0)
