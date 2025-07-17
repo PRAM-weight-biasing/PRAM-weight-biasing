@@ -25,7 +25,7 @@ myModule.start_timer()
 # Load model
 dir_name = os.getcwd() + '/TestRun/'
 # ===========================================
-folder_name = 'Test_2024-10-28_15-27_Resnet18_p0.6'
+folder_name = 'Resnet18_p0.2'
 # ===========================================
 folder_path = dir_name + folder_name
 model_name = 'local_pruned_model.pth'
@@ -43,7 +43,7 @@ trainloader, testloader = myModule.set_dataloader(data_type=datatype)
 
 """ Training """
 # lr =5e-5
-lr_list = [5e-4]    # [5e-4, 1e-4, 5e-5, 1e-5, 1e-6]   
+lr_list = [1e-4]    # [5e-4, 1e-4, 5e-5, 1e-5, 1e-6]   
 num_epochs = 50
 
 # iterate over learning rates
@@ -67,33 +67,33 @@ for lr in lr_list:
 
 # another test
     
-folder_name2 = 'Test_2025-04-01_20-26_Resnet18_p0.8'
-# ===========================================
-folder_path2 = dir_name + folder_name2
-pruned_model2 = torch.load(f'{folder_path2}/{model_name}', map_location='cpu')
+# folder_name2 = 'Test_2025-04-01_20-26_Resnet18_p0.8'
+# # ===========================================
+# folder_path2 = dir_name + folder_name2
+# pruned_model2 = torch.load(f'{folder_path2}/{model_name}', map_location='cpu')
 
-""" Training """
-# lr =5e-5
-lr_list2 = [5e-4]       # [5e-4, 1e-4, 5e-5, 1e-5, 1e-6]   
-num_epochs = 50
+# """ Training """
+# # lr =5e-5
+# lr_list2 = [5e-4]       # [5e-4, 1e-4, 5e-5, 1e-5, 1e-6]   
+# num_epochs = 50
 
-# iterate over learning rates
-for lr in lr_list2:
-    myModule.fix_seed()
-    new_folder = folder_path2 + f'/FT_{lr}_{num_epochs}'
-    os.makedirs(new_folder, exist_ok=True)
-    print(new_folder)
+# # iterate over learning rates
+# for lr in lr_list2:
+#     myModule.fix_seed()
+#     new_folder = folder_path2 + f'/FT_{lr}_{num_epochs}'
+#     os.makedirs(new_folder, exist_ok=True)
+#     print(new_folder)
 
-    model_copy = copy.deepcopy(pruned_model2)
-    retrain_model = TrainModel(trainloader, testloader, model_copy)
-    retrain_model.cifar_resnet(learning_rate=lr, num_epochs=num_epochs, folder_path=new_folder)
+#     model_copy = copy.deepcopy(pruned_model2)
+#     retrain_model = TrainModel(trainloader, testloader, model_copy)
+#     retrain_model.cifar_resnet(learning_rate=lr, num_epochs=num_epochs, folder_path=new_folder)
 
 
-    """ Visualize """
-    best_model = Vis_Model('best_model.pth', new_folder)
-    # best_model.Vis_weight()
+#     """ Visualize """
+#     best_model = Vis_Model('best_model.pth', new_folder)
+#     # best_model.Vis_weight()
     
-    myModule.clear_memory()
+#     myModule.clear_memory()
     
     
 # another test
