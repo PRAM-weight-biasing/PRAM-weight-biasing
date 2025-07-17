@@ -53,7 +53,7 @@ class InferenceModel(TrainModel):
         self.mapping_method = mapping_method
         self.gdc_list = gdc_list
         self.io_list = io_list
-        self.noise_list = noise_list            # [program, read noise scale]
+        self.noise_list = noise_list            # [program, read, drift sigma noise scale]
         self.g_list = g_list                    # [gmin, gmax] 
         self.io_res_list = io_res_list          # [inp_res, out_res]
         self.io_noise_list = io_noise_list      # [inp_noise, out_noise]
@@ -72,8 +72,8 @@ class InferenceModel(TrainModel):
                                 # print message
                                 msg = f"\nRunning inference with gdc={gdc} | ideal_io={io} | noise={noise}"
                                 if g is not None: msg += f"| g_list={g}"
-                                if io_res_bit is not None: msg += f"| inp_res_bit={io_res_bit}"
-                                if io_noise is not None: msg += f"| inp_noise={io_noise}"
+                                if io_res_bit is not None: msg += f"| io_res_bit={io_res_bit}"
+                                if io_noise is not None: msg += f"| io_noise={io_noise}"
                                 print(msg)
                                 
                                 self.run_one_condition(gdc, io, noise, g, io_res_bit, io_noise)
@@ -342,6 +342,7 @@ class InferenceModel(TrainModel):
             g_max=g_list[1] if g_list is not None else None,
             prog_noise_scale=noise_list[0] if noise_list is not None else None,
             read_noise_scale=noise_list[1] if noise_list is not None else None,
+            drift_noise_scale=noise_list[2] if noise_list is not None else None,
             inp_res_bit=inp_res_bit,
             inp_noise=inp_noise,
             out_res_bit=out_res_bit,
@@ -368,6 +369,7 @@ class InferenceModel(TrainModel):
         g_min: Optional[float] = None,
         prog_noise_scale: Optional[float] = None,
         read_noise_scale: Optional[float] = None,
+        drift_noise_scale: Optional[float] = None,
         inp_res_bit: float = 7, 
         inp_noise: float = 0.0,           
         out_res_bit: float = 9, 
@@ -384,6 +386,7 @@ class InferenceModel(TrainModel):
             g_min=g_min,
             prog_noise_scale=prog_noise_scale,
             read_noise_scale=read_noise_scale,
+            drift_noise_scale=drift_noise_scale,
             )  
         
         # global drift compensation
@@ -443,6 +446,7 @@ class InferenceModel(TrainModel):
         g_min: Optional[float] = None,
         prog_noise_scale: Optional[float] = None,
         read_noise_scale: Optional[float] = None,
+        drift_noise_scale: Optional[float] = None,
         inp_res_bit: float = 7, 
         inp_noise: float = 0.0,           
         out_res_bit: float = 9, 
@@ -461,6 +465,7 @@ class InferenceModel(TrainModel):
             g_min=g_min,
             prog_noise_scale=prog_noise_scale,
             read_noise_scale=read_noise_scale,
+            drift_noise_scale=drift_noise_scale,
             g_converter=MappedConductanceConverter(g_max=g_max, g_min=g_min),  # custom Gp-Gm mapping
             )  
         

@@ -84,6 +84,7 @@ class TestNoiseModel(BaseNoiseModel):
         read_noise_scale: float = 1.0,
         drift_scale: float = 1.0,
         prog_coeff_g_max_reference: Optional[float] = None,
+        drift_noise_scale: float = 1.0,
     ):
         g_converter = deepcopy(g_converter) or SinglePairConductanceConverter(g_max=g_max, g_min=g_min)
         super().__init__(g_converter)
@@ -113,6 +114,7 @@ class TestNoiseModel(BaseNoiseModel):
         self.prog_noise_scale = prog_noise_scale
         self.read_noise_scale = read_noise_scale
         self.drift_scale = drift_scale
+        self.drift_noise_scale = drift_noise_scale
 
     @no_grad()
     def apply_programming_noise_to_conductance(self, g_target: Tensor) -> Tensor:
@@ -175,8 +177,10 @@ class TestNoiseModel(BaseNoiseModel):
         sig_orig = (-0.0125 * log(g_relative) - 0.0059).clamp(min=0.008, max=0.045)
         sig_const = 0.008
         sig_zero = 0
-        sig_drift = sig_orig  # final
         
+        sig_drift = sig_orig + self.drift_noise_scale  # final
+        
+        """ final nu """
         nu_drift = torch_abs(mu_drift + sig_drift * randn_like(g_relative)).clamp(min=0.0)
         
         # debugging
@@ -235,6 +239,7 @@ class MappingNoiseModel(TestNoiseModel):
         prog_noise_scale: float = 1.0,
         read_noise_scale: float = 1.0,
         drift_scale: float = 1.0,
+        drift_noise_scale: float = 1.0,
         ):
         
         super().__init__(
@@ -245,6 +250,7 @@ class MappingNoiseModel(TestNoiseModel):
             prog_noise_scale=prog_noise_scale,
             read_noise_scale=read_noise_scale,
             drift_scale=drift_scale,
+            drift_noise_scale=drift_noise_scale,
         )
         
     @no_grad()
@@ -264,9 +270,8 @@ class MappingNoiseModel(TestNoiseModel):
         
         """ sig_drift """
         sig_orig = (-0.0125 * log(g_relative) - 0.0059).clamp(min=0.008, max=0.045)
-        sig_zero = 0
         
-        sig_drift = sig_orig  # final
+        sig_drift = sig_orig * self.drift_noise_scale  # final
         
         
         """ final nu """
