@@ -41,6 +41,7 @@ class InferenceModel(TrainModel):
         io_res_list: Optional[list] =None,       
         io_noise_list: Optional[list] = None,   
         distortion_f: Optional[float] = None,
+        compensation_alpha: Optional[str] = 'auto',
     ):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = None
@@ -58,6 +59,7 @@ class InferenceModel(TrainModel):
         self.io_res_list = io_res_list          # [inp_res, out_res]
         self.io_noise_list = io_noise_list      # [inp_noise, out_noise]
         self.distortion_f = distortion_f
+        self.compensation_alpha = compensation_alpha
      
         
     def run(self) -> None:     
@@ -71,10 +73,12 @@ class InferenceModel(TrainModel):
                         for io_res_bit in self.io_res_list or [None] :
                             for io_noise in self.io_noise_list or [None] :
                                 # print message
-                                msg = f"\nRunning inference with gdc={gdc} | ideal_io={io} | noise={noise}"
+                                msg = f"\nRunning inference with mapping={self.mapping_method} | gdc={gdc} | ideal_io={io} | noise={noise}"
                                 if g is not None: msg += f"| g_list={g}"
                                 if io_res_bit is not None: msg += f"| io_res_bit={io_res_bit}"
                                 if io_noise is not None: msg += f"| io_noise={io_noise}"
+                                if self.distortion_f is not None: msg += f"| distortion_f={self.distortion_f}"
+                                if self.compensation_alpha is not None: msg += f"| compensation={self.compensation_alpha}"
                                 print(msg)
                                 
                                 self.run_one_condition(gdc, io, noise, g, io_res_bit, io_noise)
@@ -227,15 +231,21 @@ class InferenceModel(TrainModel):
                 #     print(f"[Before override] t={t}, auto alpha = {tile.alpha.item():.4f}")
 
                 #  change the amplification(drift compensation) factor
-                if self.mapping_method=="naive" : pass
-                else:
-                    tau = 1 + t/20         # (t0+t)/t0
-                    nu_drift = 0.024282    # nu_max 
-                    manual_alpha = tau**nu_drift
+                tau = 1 + t/20         # (t0+t)/t0
+                nu_drift = 0.024282    # nu_max 
+                manual_alpha = tau**nu_drift
+                
+                if self.compensation_alpha == 'auto': 
+                    if self.mapping_method != "naive" : 
+                        for tile in analog_model.analog_tiles():
+                            tile.alpha = torch.tensor(manual_alpha, device=tile.alpha.device)
+
+                elif self.compensation_alpha == 'max':
+                    # Use the user-defined alpha value 
                     for tile in analog_model.analog_tiles():
                         tile.alpha = torch.tensor(manual_alpha, device=tile.alpha.device)
                         # print(f"[After override]  t={t}, manual alpha = {tile.alpha.item():.4f}")
-                    
+                        
                 """ -------------- end ------------------------"""
                             
                                 
@@ -280,7 +290,9 @@ class InferenceModel(TrainModel):
             inference_accuracy_values[i] = test_accuracy
         
         mean_acc = inference_accuracy_values.mean().item()
-        std_acc = inference_accuracy_values.std().item()
+        if self.n_rep_sw > 1:
+            std_acc = inference_accuracy_values.std().item()
+        else:  std_acc = 0.0
             
         print(
                 f"Test set accuracy (%) in s/w: \t mean: {mean_acc :.6f}, \t std: {std_acc :.6f}"
