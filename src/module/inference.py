@@ -226,9 +226,9 @@ class InferenceModel(TrainModel):
                 analog_model.drift_analog_weights(t)
                 
                 """ Change drift compensation factor alpha ------------"""
-                 # 원래 자동 보정된 alpha 출력
+                # 원래 자동 보정된 alpha 출력
                 # for tile in analog_model.analog_tiles():
-                #     print(f"[Before override] t={t}, auto alpha = {tile.alpha.item():.4f}")
+                    # print(f"[Before override] t={t}, auto alpha = {tile.alpha.item():.4f}")
 
                 #  change the amplification(drift compensation) factor
                 tau = 1 + t/20         # (t0+t)/t0
@@ -239,6 +239,7 @@ class InferenceModel(TrainModel):
                     if self.mapping_method != "naive" : 
                         for tile in analog_model.analog_tiles():
                             tile.alpha = torch.tensor(manual_alpha, device=tile.alpha.device)
+                        # print(f"[After override]  t={t}, manual alpha = {tile.alpha.item():.4f}")
 
                 elif self.compensation_alpha == 'max':
                     # Use the user-defined alpha value 
@@ -297,29 +298,6 @@ class InferenceModel(TrainModel):
         print(
                 f"Test set accuracy (%) in s/w: \t mean: {mean_acc :.6f}, \t std: {std_acc :.6f}"
             )
-    
-    def __HWinference_single(self, analog_model, t_inferences, seed=42):
-        """ Evaluate the model in hardware for a single inference """
-        analog_model.to(self.device)
-        analog_model.eval()
-        
-        inference_accuracy_values = torch.zeros((len(t_inferences), 1)) 
-        results = []
-                
-        for t_id, t in enumerate(t_inferences):
-            # fix seed for reproducibility when applying the gaussian noise
-            torch.manual_seed(seed)
-            torch.cuda.manual_seed(seed)
-         
-            # inference
-            analog_model.drift_analog_weights(t)
-            _, test_accuracy = self.get_eval_function()(analog_model, self.testloader)
-            inference_accuracy_values[t_id, 0] = test_accuracy
-                            
-            results.append([t, test_accuracy])
-            # print(f"[DEBUG]: test acc : {test_accuracy}")
-            
-        return results
     
     
     def get_eval_function(self):
