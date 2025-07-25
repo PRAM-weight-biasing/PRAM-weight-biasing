@@ -122,7 +122,7 @@ class InferenceModel(TrainModel):
             all_results.extend(results)
 
         # Save results
-        filename = f"../results/results_{self.mapping_method}_gdc-{gdc}_io-{io}_noise-{noise}.xlsx.xlsx"
+        filename = f"../results/results_{self.mapping_method}_gdc-{gdc}_io-{io}_noise-{noise}_{io_res_bit}.xlsx"
         df = pd.DataFrame(all_results, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
         df.to_excel(filename, index=False, engine='openpyxl')
         print(f"Saved: {filename}")
@@ -252,6 +252,7 @@ class InferenceModel(TrainModel):
                                 
                 _, test_accuracy = self.get_eval_function()(analog_model, self.testloader)
                 results.append([t, test_accuracy])
+                # print(f'[DEBUG] t={t}, test_accuracy={test_accuracy:.4f}')
                                 
             rep_results.append(results)
             
