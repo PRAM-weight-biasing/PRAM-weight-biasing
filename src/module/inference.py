@@ -232,7 +232,7 @@ class InferenceModel(TrainModel):
 
                 #  change the amplification(drift compensation) factor
                 tau = 1 + t/20         # (t0+t)/t0
-                nu_drift = 0.024282    # nu_max 
+                nu_drift = 0.024282    # nu_min 
                 manual_alpha = tau**nu_drift
                 
                 if self.compensation_alpha == 'auto': 
