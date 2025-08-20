@@ -18,22 +18,22 @@ model_dict = ModelLoader.load_models(imported_model)
 
 
 # simulation setting
-io_res_list = [[6,7], [6,8], [6,9], [7,7], [7,8], [7,9], [8,7], [8,8], [8,9]]  # [[7,9]]
+io_res_list =  [[7,7]] # [[6,7], [6,8], [6,9], [7,7], [7,8], [7,9], [8,7], [8,8], [8,9]] 
 io_noise_list = [[0.0, 0.0]]  
 
 # Run simulation
 inference_model = InferenceModel(
     n_rep_hw=30, 
-    mapping_method="naive",
+    mapping_method="naive",   # myMapping, naive
     model_dict=model_dict,
     gdc_list= [True],
     io_list= [False],
-    noise_list= [[0, 0, 1]],           
+    noise_list= [[0, 0, 0.25], [0, 0, 0.5], [0, 0, 1.5]],    
     g_list= [[0.1, 25]],                 
     io_res_list=io_res_list,      
     io_noise_list=io_noise_list, 
-    distortion_f= 0.0,
-    compensation_alpha = 'auto',
+    distortion_f= 2/3,
+    compensation_alpha = 'LRS',  # auto, LRS
     )
 inference_model.run()
 

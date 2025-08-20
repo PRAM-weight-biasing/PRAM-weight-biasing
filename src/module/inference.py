@@ -241,7 +241,7 @@ class InferenceModel(TrainModel):
                             tile.alpha = torch.tensor(manual_alpha, device=tile.alpha.device)
                         # print(f"[After override]  t={t}, manual alpha = {tile.alpha.item():.4f}")
 
-                elif self.compensation_alpha == 'max':
+                elif self.compensation_alpha == 'LRS':
                     # Use the user-defined alpha value 
                     for tile in analog_model.analog_tiles():
                         tile.alpha = torch.tensor(manual_alpha, device=tile.alpha.device)
