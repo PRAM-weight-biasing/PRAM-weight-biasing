@@ -92,6 +92,8 @@ class MappedConductanceConverter(SinglePairConductanceConverter):
 
     Assuming a single pair of devices per cross-point, taking positive
     and negative weights, respectively, where mapping method of each device is customized.
+    
+    target inference time = 1 month (30 * 24 * 60 * 60 = 2592000 sec)
     """
     
     def __init__(self, 
@@ -154,6 +156,53 @@ class MappedConductanceConverter(SinglePairConductanceConverter):
         weights = scaled_weights / params["scale_ratio"]
 
         return weights
+    
+class MappedConductanceConverter2(MappedConductanceConverter):
+    """Single pair of devices.
+
+    Assuming a single pair of devices per cross-point, taking positive
+    and negative weights, respectively, where mapping method of each device is customized.
+    
+    target inference time = 1 year (12 * 30 * 24 * 60 * 60 = 31536000 sec)
+    """
+    
+    def __init__(self, 
+                 g_max: Optional[float] = None, 
+                 g_min: Optional[float] = None,
+                 distortion_f: Optional[float] = None):
+        super().__init__(g_max, g_min)
+        
+        self.distortion_f = 0.0 if distortion_f is None else distortion_f
+    
+    @no_grad()
+    def convert_to_conductances(self, weights: Tensor) -> Tuple[List[Tensor], Dict]:
+        # scaling weights into -1 ~ 1
+        abs_max = torch_abs(weights).max()
+        scale_ratio = 1.0 / abs_max.clamp(min=_ZERO_CLIP)
+        scaled_weights = weights * scale_ratio
+        
+        abs_w = torch_abs(scaled_weights)
+        
+        
+        # coefficients
+        coeff_a = 2.47102051
+        coeff_b = 12.19353715
+        coeff_b1 = 12.70646285
+        coeff_c = 10.17025966
+        
+        g_minor = coeff_a * abs_w**2 - coeff_b1 * abs_w + coeff_c 
+        g_minor = (1 - self.distortion_f) * g_minor
+        g_major = (abs_w + g_minor / (self.g_max - self.g_min)) * (self.g_max - self.g_min)
+
+        gp = torch_where(scaled_weights >= 0, g_major, g_minor)
+        gm = torch_where(scaled_weights >= 0, g_minor, g_major)
+        
+
+        conductances = [gp, gm]
+        params = {"scale_ratio": scale_ratio}  # for reverse conversion
+
+        return conductances, params
+
    
 
 class NPairConductanceConverter(BaseConductanceConverter):

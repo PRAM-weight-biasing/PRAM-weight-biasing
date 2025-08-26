@@ -447,7 +447,7 @@ class InferenceModel(TrainModel):
         out_noise: float = 0.06,
         ):       
         
-        from module.g_converter import MappedConductanceConverter
+        from module.g_converter import MappedConductanceConverter, MappedConductanceConverter2
         
         rpu_config = InferenceRPUConfig()
         rpu_config.device = PCMPresetUnitCell()      # paired PCM devices (Gp-Gm)
@@ -460,7 +460,7 @@ class InferenceModel(TrainModel):
             prog_noise_scale=prog_noise_scale,
             read_noise_scale=read_noise_scale,
             drift_noise_scale=drift_noise_scale,
-            g_converter=MappedConductanceConverter(g_max=g_max, g_min=g_min, distortion_f=self.distortion_f), 
+            g_converter=MappedConductanceConverter2(g_max=g_max, g_min=g_min, distortion_f=self.distortion_f), 
             )  
         
         # global drift compensation
