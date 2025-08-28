@@ -340,15 +340,16 @@ class InferenceModel(TrainModel):
             inp_res_bit=inp_res_bit,
             inp_noise=inp_noise,
             out_res_bit=out_res_bit,
-            out_noise=out_noise
+            out_noise=out_noise,
         )
 
         # Set the mapping methods       
         if self.mapping_method == "naive":
             pcm_config = self.SetConfig(**config_args)
-        elif self.mapping_method == "myMapping":
+        elif "myMapping" in self.mapping_method :
             # for customized Gp-Gm mapping
             pcm_config = self.MappingSetConfig(**config_args)
+
         
         analog_model = convert_to_analog(self.model, pcm_config)
         
@@ -449,6 +450,13 @@ class InferenceModel(TrainModel):
         
         from module.g_converter import MappedConductanceConverter, MappedConductanceConverter2
         
+        if self.mapping_method == "myMapping":
+            g_conv = MappedConductanceConverter(g_max=g_max, g_min=g_min, distortion_f=self.distortion_f)
+        elif self.mapping_method == "myMapping_1yr":
+            g_conv = MappedConductanceConverter2(g_max=g_max, g_min=g_min, distortion_f=self.distortion_f)
+        else:
+            raise ValueError(f"Unsupported mapping_method: {self.mapping_method}")
+
         rpu_config = InferenceRPUConfig()
         rpu_config.device = PCMPresetUnitCell()      # paired PCM devices (Gp-Gm)
         rpu_config.mapping.weight_scaling_omega = 1.0  
@@ -460,7 +468,7 @@ class InferenceModel(TrainModel):
             prog_noise_scale=prog_noise_scale,
             read_noise_scale=read_noise_scale,
             drift_noise_scale=drift_noise_scale,
-            g_converter=MappedConductanceConverter2(g_max=g_max, g_min=g_min, distortion_f=self.distortion_f), 
+            g_converter=g_conv, 
             )  
         
         # global drift compensation
