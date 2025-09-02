@@ -104,11 +104,34 @@ class InferenceModel(TrainModel):
                                 if self.compensation_alpha is not None: msg += f"| compensation={self.compensation_alpha}"
                                 print(msg)
                                 
-                                self.run_one_condition()
+                                self.run_one_condition(gdc, io, noise, g, io_res_bit, io_noise)
 
 
-    def run_one_condition(self):
+    def run_one_condition(self, gdc, io, noise, g, io_res_bit, io_noise):
         
+        # the arguments for 'sim_iter'
+        kwargs = {
+            "gdc": gdc,
+            "ideal_io": io,
+            "noise_list": noise,
+        }
+        if g is not None:
+            kwargs["g_list"] = g
+
+        if io_res_bit is not None:
+            inp_res_bit, out_res_bit = io_res_bit
+            kwargs.update({
+                "inp_res_bit": inp_res_bit,
+                "out_res_bit": out_res_bit,
+            })
+
+        if io_noise is not None:
+            inp_noise, out_noise = io_noise
+            kwargs.update({
+                "inp_noise": inp_noise,
+                "out_noise": out_noise,
+            })
+
         # model loop
         all_results = []
 
@@ -118,18 +141,26 @@ class InferenceModel(TrainModel):
             self.model = model
             self.model_name = model_name
 
-            results = self.sim_iter()
+            results = self.sim_iter(**kwargs)
             all_results.extend(results)
 
         # Save results
-        io_res_tag = f"[{self.inp_res_bit}, {self.out_res_bit}]"
-        filename = f"../results/results_{self.mapping_method}_gdc-{self.gdc}_io-{self.io}_noise-{self.noise}_{io_res_tag}.xlsx"
+        filename = f"../results/results_{self.mapping_method}_gdc-{gdc}_io-{io}_noise-{noise}_{io_res_bit}.xlsx"
         df = pd.DataFrame(all_results, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
         df.to_excel(filename, index=False, engine='openpyxl')
         print(f"Saved: {filename}")
 
         
-    def sim_iter(self) -> list :
+    def sim_iter(self,
+                 g_list: Optional[list] = None,
+                 noise_list: Optional[list]=None,
+                 gdc: bool= True,
+                 ideal_io: bool= False,
+                 inp_res_bit=7, 
+                 inp_noise=0.0, 
+                 out_res_bit=9, 
+                 out_noise=0.06
+                 ) -> list :
 
         """ Run inference with software and hardware """
         
@@ -139,7 +170,16 @@ class InferenceModel(TrainModel):
         self.SWinference()
         
         # inference accuracy in hardware (simulator) 
-        t_inferences, rep_results = self.HWinference()
+        t_inferences, rep_results = self.HWinference(
+                                g_list=g_list, 
+                                noise_list=noise_list,
+                                gdc=gdc, 
+                                ideal_io=ideal_io,
+                                inp_res_bit=inp_res_bit,
+                                inp_noise=inp_noise,
+                                out_res_bit=out_res_bit,
+                                out_noise=out_noise,
+                                )
     
         # Calculate statistics across repetitions
         results = self.acc_over_time(t_inferences, rep_results, results)
@@ -148,7 +188,17 @@ class InferenceModel(TrainModel):
             
         return results
 
-    def HWinference(self) -> list:
+    def HWinference(
+        self,
+        g_list: Optional[list] = None,
+        noise_list: Optional[list]=None,
+        gdc: bool= True,
+        ideal_io: bool= False,
+        inp_res_bit: float= 7,
+        inp_noise: float= 0.0,           
+        out_res_bit: float= 9,
+        out_noise: float= 0.06,
+        ) -> list:
         
         """ inference accuracy in hw (simulator) """ 
                
@@ -173,7 +223,16 @@ class InferenceModel(TrainModel):
             current_seed = 42 + rep
             myModule.fix_seed(current_seed)     
             
-            analog_model = self.ConvertModel()              
+            analog_model = self.ConvertModel(
+            gdc=gdc,
+            ideal_io=ideal_io,
+            g_list=g_list,
+            noise_list=noise_list,
+            inp_res_bit=inp_res_bit,
+            inp_noise=inp_noise,
+            out_res_bit=out_res_bit,
+            out_noise=out_noise,
+            )              
         
             analog_model.to(self.device)
             analog_model.eval() 
@@ -278,23 +337,33 @@ class InferenceModel(TrainModel):
         return eval_function_map[self.datatype]
     
     
-    def ConvertModel(self): 
+    def ConvertModel(
+        self,
+        gdc: bool, 
+        ideal_io: bool = False,
+        g_list: Optional[list] = None,
+        noise_list: Optional[list]=None,
+        inp_res_bit: float = 7, 
+        inp_noise: float = 0.0,           
+        out_res_bit: float = 9, 
+        out_noise: float = 0.06,
+        ): 
         
         # fix seed for reproducibility during mapping
         myModule.fix_seed(seed=42)  
         
         config_args = dict(
-            gdc=self.gdc,
-            ideal_io=self.io,
-            g_min=self.g[0] if self.g is not None else None,
-            g_max=self.g[1] if self.g is not None else None,
-            prog_noise_scale=self.noise[0] if self.noise is not None else None,
-            read_noise_scale=self.noise[1] if self.noise is not None else None,
-            drift_noise_scale=self.noise[2] if self.noise is not None else None,
-            inp_res_bit=self.inp_res_bit,
-            inp_noise=self.inp_noise,
-            out_res_bit=self.out_res_bit,
-            out_noise=self.out_noise,
+            gdc=gdc,
+            ideal_io=ideal_io,
+            g_min=g_list[0] if g_list is not None else None,
+            g_max=g_list[1] if g_list is not None else None,
+            prog_noise_scale=noise_list[0] if noise_list is not None else None,
+            read_noise_scale=noise_list[1] if noise_list is not None else None,
+            drift_noise_scale=noise_list[2] if noise_list is not None else None,
+            inp_res_bit=inp_res_bit,
+            inp_noise=inp_noise,
+            out_res_bit=out_res_bit,
+            out_noise=out_noise,
         )
 
         # Set the mapping methods       
@@ -472,13 +541,3 @@ class InferenceModel(TrainModel):
             )
 
         return rpu_config 
-    
-    
-    def convert_all_models(self) -> dict:
-        analog_models = {}
-        for name, mdl in self.model_dict.items():
-            self.model_name = name
-            self.model = mdl
-            analog_models[name] = self.ConvertModel() 
-            
-        return analog_models
