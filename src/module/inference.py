@@ -98,8 +98,8 @@ class InferenceModel(TrainModel):
                                 # print message
                                 msg = f"\nRunning inference with mapping={self.mapping_method} | gdc={self.gdc} | ideal_io={self.io} | noise={self.noise}"
                                 if g is not None: msg += f"| g_list={self.g}"
-                                if io_res_bit is not None: msg += f"| io_res_bit={self.io_res_bit}"
-                                if io_noise is not None: msg += f"| io_noise={self.io_noise}"
+                                if io_res_bit is not None: msg += f"| io_res_bit={io_res_bit}"
+                                if io_noise is not None: msg += f"| io_noise={io_noise}"
                                 if self.distortion_f is not None: msg += f"| distortion_f={self.distortion_f}"
                                 if self.compensation_alpha is not None: msg += f"| compensation={self.compensation_alpha}"
                                 print(msg)
