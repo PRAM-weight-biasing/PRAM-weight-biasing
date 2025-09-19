@@ -24,15 +24,15 @@ io_noise_list = [[0.0, 0.0]]
 # Run simulation
 inference_model = InferenceModel(
     n_rep_hw=30, 
-    mapping_method= "myMapping",   # myMapping, myMapping_1yr, naive
+    mapping_method= "naive",   # myMapping, myMapping_1yr, naive
     model_dict=model_dict,
     gdc_list= [True],
-    io_list= [False],
-    noise_list= [[0, 0, 0]],    
+    io_list= [True],
+    noise_list= [[0, 0, 0], [0, 0, 1]],    
     g_list= [[0.1, 25]],                 
-    io_res_list=io_res_list,      
-    io_noise_list=io_noise_list, 
-    distortion_f= 2/3,
+    # io_res_list=io_res_list,      
+    # io_noise_list=io_noise_list, 
+    distortion_f= 0,
     compensation_alpha = 'auto',  # auto, LRS
     )
 inference_model.run()
