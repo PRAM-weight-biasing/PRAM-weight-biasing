@@ -15,8 +15,8 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torchvision.datasets as dsets
 from torchvision.transforms import ToTensor
 
-from sklearn.metrics import r2_score
-from sklearn.metrics import mean_absolute_percentage_error
+# from sklearn.metrics import r2_score
+# from sklearn.metrics import mean_absolute_percentage_error
 import matplotlib.pyplot as plt
 
 # customized methods
@@ -600,6 +600,7 @@ class PruneModel():
                 prune.remove(module, 'weight')  # fix pruned weights
         # Save the model
         torch.save(self.premodel, f'{self.folder_path}/local_pruned_model.pth')
+        torch.save(self.premodel.state_dict(), f'{self.folder_path}/local_pruned_model_param.pth')
 
 
     def apply_global_pruning(self, amount: float) -> None :
