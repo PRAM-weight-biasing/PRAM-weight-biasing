@@ -12,6 +12,7 @@ from Model.PyTorch_CIFAR10.cifar10_models.resnet import resnet18
 layer = None
 
 vanilla_model = resnet18(pretrained=True)
+print("[INFO] Evaluating: Vanilla Model")
 output = PlotModule.compute_drift_error(
     vanilla_model, dataset="cifar10", t_seconds=9.33e7, input_layer_names=layer)
 print('Output:', output)
@@ -22,13 +23,10 @@ base_dir = os.getcwd() + '/TestRun/'
 
 # 폴더 이름 (pruning rate 변화)
 folder_list = [
-    'Test_2024-10-28_15-15_Resnet18_p0.3',
-    'Test_2024-10-28_15-22_Resnet18_p0.4',
-    'Test_2024-10-28_15-26_Resnet18_p0.5',
-    'Test_2024-10-28_15-27_Resnet18_p0.6',
-    'Test_2024-10-28_15-32_Resnet18_p0.7',
-    'Test_2025-04-01_20-26_Resnet18_p0.8',
-    'Test_2025-04-01_20-33_Resnet18_p0.9',
+    'Resnet18_p0.2',
+    'Resnet18_p0.4',
+    'Resnet18_p0.6',
+    'Resnet18_p0.8',
 ]
 
 # 모델 이름 (fine-tuning 종류)

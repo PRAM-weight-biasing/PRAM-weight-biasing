@@ -66,10 +66,10 @@ class InferenceModel(TrainModel):
         self.io = None
         self.noise = None
         self.g = None
-        self.inp_res_bit = 7
-        self.out_res_bit = 9
-        self.inp_noise = 0.0
-        self.out_noise = 0.06
+        self.inp_res_bit = None
+        self.out_res_bit = None
+        self.inp_noise = None
+        self.out_noise = None
         
     def run(self) -> None:
         """ Run inference with different parameters """

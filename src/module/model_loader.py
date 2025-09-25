@@ -13,25 +13,26 @@ class ModelLoader:
 
     name_list = [
         # 'vanilla-Resnet18',
-        # 'Resnet18_p0.2',
-        'Resnet18_p0.3',
-        # 'Resnet18_p0.4',
-        # # 'Resnet18_p0.5',
-        # 'Resnet18_p0.6',
-        # # 'Resnet18_p0.7',
-        # 'Resnet18_p0.8',
-        'Resnet18_p0.9',
+        'Resnet18_p0.2',
+        # 'Resnet18_p0.3',
+        'Resnet18_p0.4',
+        # 'Resnet18_p0.5',
+        'Resnet18_p0.6',
+        # 'Resnet18_p0.7',
+        'Resnet18_p0.8',
+        # 'Resnet18_p0.9',
         ]
 
 
     @staticmethod
+    
     def get_model_file(imported_model):
         if imported_model == '1':
             return 'local_pruned_model_param.pth'
         elif imported_model == '2':
             return 'FT_0.0001_50/best_model_param.pth'
         elif imported_model == '3':
-            return 'test_model.pth'
+            return 'FT_0.0005_50/best_model_param.pth'      # FT_5e-05_50 / FT_1e-06_50 
         else:
             raise ValueError("Invalid model type.")
 

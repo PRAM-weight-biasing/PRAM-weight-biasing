@@ -2,7 +2,7 @@ import torch
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io
-import seaborn as sns
+# import seaborn as sns
 from network import InfModel
 
 

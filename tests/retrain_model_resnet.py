@@ -43,7 +43,7 @@ trainloader, testloader = myModule.set_dataloader(data_type=datatype)
 
 """ Training """
 # lr =5e-5
-lr_list = [1e-4]    # [5e-4, 1e-4, 5e-5, 1e-5, 1e-6]   
+lr_list =   [5e-4] # [5e-5, 1e-5, 1e-6]   # 5e-4, 1e-4,
 num_epochs = 50
 
 # iterate over learning rates
@@ -59,7 +59,7 @@ for lr in lr_list:
 
 
     """ Visualize """
-    best_model = Vis_Model('best_model.pth', new_folder)
+    # best_model = Vis_Model('best_model.pth', new_folder)
     # best_model.Vis_weight()
     
     myModule.clear_memory()
