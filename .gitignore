@@ -164,8 +164,17 @@ MNIST_data
 src/MNIST_MLP/debug.py
 results/MNIST_MLP
 download
-model
+model/PyTorch_CIFAR10
 src/dataset
 results
 z_none
 src/bu_260407
+model/pruned/Resnet18_p0.2
+model/pruned/Resnet18_p0.3
+model/pruned/Resnet18_p0.4
+model/pruned/Resnet18_p0.5
+model/pruned/Resnet18_p0.6
+model/pruned/Resnet18_p0.7
+model/pruned/Resnet18_p0.8
+model/pruned/Resnet18_p0.9
+# model/pruned

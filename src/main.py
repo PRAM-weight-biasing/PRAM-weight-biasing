@@ -20,13 +20,13 @@ model_dict = ModelLoader.load_models(imported_model)
 # simulation setting
 gdc_list = [True]
 io_list = [True]
-noise_list = [[0, 0, 0],[0,0,1], [0,1,1], [1,1,1]]      # add more: [[0,0,1], [0,0,2]]
+noise_list = [[1,1,1]]      # add more: [[0,0,1], [0,0,2]]
 g_list = [[0.1, 25]]          # add more: [[0.1,25], [0.2,25]]
 io_res_list = [None]          # ex) [[7, 7]]
 io_noise_list = [None]        # ex) [[0.0, 0.0]]
 
 adabs = AdaBSConfig(
-    enable=True,
+    enable=False,
     num_batches=13,      # ResNet32/CIFAR10 default from AdaBS paper setup
     batch_size=200,
     momentum=None,       # None -> p = 0.015 ** (1 / n)
@@ -44,7 +44,7 @@ inference_model = InferenceModel(
     io_res_list=io_res_list,
     io_noise_list=io_noise_list,
     adabs=adabs,
-    distortion_f=1/3,
+    distortion_f=0,
     compensation_alpha='auto',   # auto, LRS
 )
 inference_model.run()
