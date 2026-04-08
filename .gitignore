@@ -169,8 +169,8 @@ src/dataset
 results
 z_none
 src/bu_260407
-model/pruned/Resnet18_p0.2
-model/pruned/Resnet18_p0.3
+# model/pruned/Resnet18_p0.2
+# model/pruned/Resnet18_p0.3
 model/pruned/Resnet18_p0.4
 model/pruned/Resnet18_p0.5
 model/pruned/Resnet18_p0.6
