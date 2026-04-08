@@ -369,7 +369,7 @@ class InferenceModel(TrainModel):
         # Set the mapping methods       
         if self.mapping_method == "naive":
             pcm_config = self.SetConfig(**config_args)
-        elif "myMapping" in self.mapping_method :
+        elif "DCM" in self.mapping_method :
             # for customized Gp-Gm mapping
             pcm_config = self.MappingSetConfig(**config_args)
 
@@ -471,12 +471,22 @@ class InferenceModel(TrainModel):
         out_noise: float = 0.06,
         ):       
         
-        from module.g_converter import MappedConductanceConverter, MappedConductanceConverter2
+        from module.g_converter import MappedConductanceConverter
         
-        if self.mapping_method == "myMapping":
-            g_conv = MappedConductanceConverter(g_max=g_max, g_min=g_min, distortion_f=self.distortion_f)
-        elif self.mapping_method == "myMapping_1yr":
-            g_conv = MappedConductanceConverter2(g_max=g_max, g_min=g_min, distortion_f=self.distortion_f)
+        if self.mapping_method == "DCM":
+            g_conv = MappedConductanceConverter(
+                g_max=g_max,
+                g_min=g_min,
+                distortion_f=self.distortion_f,
+                profile="1month",
+            )
+        elif self.mapping_method == "DCM_1yr":
+            g_conv = MappedConductanceConverter(
+                g_max=g_max,
+                g_min=g_min,
+                distortion_f=self.distortion_f,
+                profile="1year",
+            )
         else:
             raise ValueError(f"Unsupported mapping_method: {self.mapping_method}")
 

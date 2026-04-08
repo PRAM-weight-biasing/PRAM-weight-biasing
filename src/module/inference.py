@@ -4,12 +4,15 @@
 
 import os
 import sys
+from dataclasses import dataclass
+from itertools import product
 import numpy as np
 import pandas as pd 
 from tqdm import tqdm
 from typing import Optional
 
 import torch
+import torch.nn as nn
 
 # aihwkit related methods
 from aihwkit.simulator.configs import InferenceRPUConfig
@@ -24,6 +27,40 @@ import module.myModule as myModule
 from module.train import TrainModel
 
 
+@dataclass(frozen=True)
+class AdaBSConfig:
+    enable: bool = False
+    num_batches: int = 13
+    batch_size: int = 200
+    momentum: Optional[float] = None
+
+
+@dataclass(frozen=True)
+class InferenceCondition:
+    gdc: bool = True
+    ideal_io: bool = False
+    noise: Optional[list] = None
+    g_list: Optional[list] = None
+    io_res_bits: Optional[list] = None
+    io_noise: Optional[list] = None
+
+    @property
+    def inp_res_bit(self):
+        return None if self.io_res_bits is None else self.io_res_bits[0]
+
+    @property
+    def out_res_bit(self):
+        return None if self.io_res_bits is None else self.io_res_bits[1]
+
+    @property
+    def inp_noise(self):
+        return None if self.io_noise is None else self.io_noise[0]
+
+    @property
+    def out_noise(self):
+        return None if self.io_noise is None else self.io_noise[1]
+
+
 class InferenceModel(TrainModel):
     """ Class for inference model """
     
@@ -34,6 +71,8 @@ class InferenceModel(TrainModel):
         n_rep_sw: int=1, 
         n_rep_hw: int=30, 
         mapping_method="naive",
+        conditions: Optional[list] = None,
+        adabs: Optional[AdaBSConfig] = None,
         gdc_list: Optional[list]=None,
         io_list: Optional[list]=None,
         noise_list: Optional[list]=None,         
@@ -42,72 +81,170 @@ class InferenceModel(TrainModel):
         io_noise_list: Optional[list] = None,   
         distortion_f: Optional[float] = None,
         compensation_alpha: Optional[str] = 'auto',
+        adabs_enable: bool = False,
+        adabs_num_batches: int = 13,
+        adabs_batch_size: int = 200,
+        adabs_momentum: Optional[float] = None,
     ):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = None
         self.model_name = None
         self.model_dict = model_dict
         self.datatype = datatype
-        _, self.testloader = myModule.set_dataloader(data_type=datatype)
+        self.trainloader, self.testloader = myModule.set_dataloader(data_type=datatype)
         self.n_rep_sw = n_rep_sw
         self.n_rep_hw = n_rep_hw
         self.mapping_method = mapping_method
-        self.gdc_list = gdc_list or [True]
-        self.io_list = io_list or [False]
-        self.noise_list = noise_list or []      # [program, read, drift sigma noise scale]
-        self.g_list = g_list                    # [gmin, gmax] 
-        self.io_res_list = io_res_list          # [inp_res, out_res]
-        self.io_noise_list = io_noise_list      # [inp_noise, out_noise]
         self.distortion_f = distortion_f
         self.compensation_alpha = compensation_alpha
+        self.conditions = conditions or self.build_conditions(
+            gdc_list=gdc_list,
+            io_list=io_list,
+            noise_list=noise_list,
+            g_list=g_list,
+            io_res_list=io_res_list,
+            io_noise_list=io_noise_list,
+        )
+        self.adabs = adabs or AdaBSConfig(
+            enable=adabs_enable,
+            num_batches=adabs_num_batches,
+            batch_size=adabs_batch_size,
+            momentum=adabs_momentum,
+        )
+        self.adabs_loader = None
      
-        # initialize the parameters
-        self.gdc = None
-        self.io = None
-        self.noise = None
-        self.g = None
-        self.inp_res_bit = None
-        self.out_res_bit = None
-        self.inp_noise = None
-        self.out_noise = None
-        
+    @staticmethod
+    def _normalize_grid(value, treat_list_as_single: bool = False) -> list:
+        """Normalize an option value to a list of candidates.
+
+        Examples:
+        - value=None -> [None]
+        - value=True -> [True]
+        - value=[True, False] -> [True, False]
+        - value=[0, 0, 1] with treat_list_as_single=True -> [[0, 0, 1]]
+        - value=[[0, 0, 1], [0, 0, 2]] with treat_list_as_single=True -> [[...], [...]]
+        """
+
+        if value is None:
+            return [None]
+
+        if isinstance(value, tuple):
+            value = list(value)
+
+        if not isinstance(value, list):
+            return [value]
+
+        if len(value) == 0:
+            return [None]
+
+        if not treat_list_as_single:
+            return value
+
+        first_item = value[0]
+        if len(value) == 1 and first_item is None:
+            return [None]
+
+        # Already a list of variants (eg [[...], [...]] or [None, [...]])
+        if all((item is None) or isinstance(item, (list, tuple)) for item in value):
+            return [list(item) if isinstance(item, tuple) else item for item in value]
+
+        if isinstance(first_item, tuple):
+            return [list(item) if isinstance(item, tuple) else item for item in value]
+        if isinstance(first_item, list):
+            return value
+
+        return [value]
+
+    @staticmethod
+    def build_conditions(
+        gdc_list: Optional[list] = None,
+        io_list: Optional[list] = None,
+        noise_list: Optional[list] = None,
+        g_list: Optional[list] = None,
+        io_res_list: Optional[list] = None,
+        io_noise_list: Optional[list] = None,
+    ) -> list:
+        """Create a flat list of inference conditions from option grids."""
+
+        normalized_gdc = InferenceModel._normalize_grid(
+            [True] if gdc_list is None else gdc_list,
+            treat_list_as_single=False,
+        )
+        normalized_io = InferenceModel._normalize_grid(
+            [False] if io_list is None else io_list,
+            treat_list_as_single=False,
+        )
+        normalized_noise = InferenceModel._normalize_grid(
+            noise_list,
+            treat_list_as_single=True,
+        )
+        normalized_g = InferenceModel._normalize_grid(
+            g_list,
+            treat_list_as_single=True,
+        )
+        normalized_io_res = InferenceModel._normalize_grid(
+            io_res_list,
+            treat_list_as_single=True,
+        )
+        normalized_io_noise = InferenceModel._normalize_grid(
+            io_noise_list,
+            treat_list_as_single=True,
+        )
+
+        return [
+            InferenceCondition(
+                gdc=gdc,
+                ideal_io=ideal_io,
+                noise=noise,
+                g_list=g_range,
+                io_res_bits=io_res_bits,
+                io_noise=io_noise,
+            )
+            for ideal_io, gdc, noise, g_range, io_res_bits, io_noise in product(
+                normalized_io,
+                normalized_gdc,
+                normalized_noise,
+                normalized_g,
+                normalized_io_res,
+                normalized_io_noise,
+            )
+        ]
+
     def run(self) -> None:
         """ Run inference with different parameters """
 
-        # for loop for every input parameter
-        for io in self.io_list:
-            for gdc in self.gdc_list:
-                for noise in self.noise_list :
-                    for g in self.g_list or [None] :
-                        for io_res_bit in self.io_res_list or [None] :
-                            for io_noise in self.io_noise_list or [None] :
-                                
-                                # setting the parameters
-                                self.io = io
-                                self.gdc = gdc
-                                self.noise = noise
-                                self.g = g
-                                
-                                if io_res_bit is not None: 
-                                    self.inp_res_bit, self.out_res_bit = io_res_bit
-                                
-                                if io_noise is not None:
-                                    self.inp_noise, self.out_noise = io_noise
-                                
-                                
-                                # print message
-                                msg = f"\nRunning inference with mapping={self.mapping_method} | gdc={self.gdc} | ideal_io={self.io} | noise={self.noise}"
-                                if g is not None: msg += f"| g_list={self.g}"
-                                if io_res_bit is not None: msg += f"| io_res_bit={io_res_bit}"
-                                if io_noise is not None: msg += f"| io_noise={io_noise}"
-                                if self.distortion_f is not None: msg += f"| distortion_f={self.distortion_f}"
-                                if self.compensation_alpha is not None: msg += f"| compensation={self.compensation_alpha}"
-                                print(msg)
-                                
-                                self.run_one_condition()
+        for condition in self.conditions:
+            print(self.describe_condition(condition))
+            self.run_one_condition(condition)
 
 
-    def run_one_condition(self):
+    def describe_condition(self, condition: InferenceCondition) -> str:
+        msg = (
+            f"\nRunning inference with mapping={self.mapping_method}"
+            f" | gdc={condition.gdc}"
+            f" | ideal_io={condition.ideal_io}"
+            f" | noise={condition.noise}"
+        )
+        if condition.g_list is not None:
+            msg += f"| g_list={condition.g_list}"
+        if condition.io_res_bits is not None:
+            msg += f"| io_res_bit={condition.io_res_bits}"
+        if condition.io_noise is not None:
+            msg += f"| io_noise={condition.io_noise}"
+        if self.distortion_f is not None:
+            msg += f"| distortion_f={self.distortion_f}"
+        if self.compensation_alpha is not None:
+            msg += f"| compensation={self.compensation_alpha}"
+        if self.adabs.enable:
+            msg += (
+                f"| AdaBS=True"
+                f"| adabs_num_batches={self.adabs.num_batches}"
+                f"| adabs_batch_size={self.adabs.batch_size}"
+            )
+        return msg
+
+
+    def run_one_condition(self, condition: InferenceCondition):
         
         # model loop
         all_results = []
@@ -118,18 +255,25 @@ class InferenceModel(TrainModel):
             self.model = model
             self.model_name = model_name
 
-            results = self.sim_iter()
+            results = self.sim_iter(condition)
             all_results.extend(results)
 
         # Save results
-        io_res_tag = f"[{self.inp_res_bit}, {self.out_res_bit}]"
-        filename = f"../results/results_{self.mapping_method}_gdc-{self.gdc}_io-{self.io}_noise-{self.noise}_{io_res_tag}.xlsx"
+        io_res_tag = str(condition.io_res_bits)
+        adabs_tag = f"_adabs-{self.adabs.enable}"
+        filename = (
+            f"../results/results_{self.mapping_method}"
+            f"_gdc-{condition.gdc}"
+            f"_io-{condition.ideal_io}"
+            f"_noise-{condition.noise}"
+            f"_{io_res_tag}{adabs_tag}.xlsx"
+        )
         df = pd.DataFrame(all_results, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
         df.to_excel(filename, index=False, engine='openpyxl')
         print(f"Saved: {filename}")
 
         
-    def sim_iter(self) -> list :
+    def sim_iter(self, condition: InferenceCondition) -> list :
 
         """ Run inference with software and hardware """
         
@@ -139,7 +283,7 @@ class InferenceModel(TrainModel):
         self.SWinference()
         
         # inference accuracy in hardware (simulator) 
-        t_inferences, rep_results = self.HWinference()
+        t_inferences, rep_results = self.HWinference(condition)
     
         # Calculate statistics across repetitions
         results = self.acc_over_time(t_inferences, rep_results, results)
@@ -148,7 +292,7 @@ class InferenceModel(TrainModel):
             
         return results
 
-    def HWinference(self) -> list:
+    def HWinference(self, condition: InferenceCondition) -> list:
         
         """ inference accuracy in hw (simulator) """ 
                
@@ -173,7 +317,7 @@ class InferenceModel(TrainModel):
             current_seed = 42 + rep
             myModule.fix_seed(current_seed)     
             
-            analog_model = self.ConvertModel()              
+            analog_model = self.ConvertModel(condition)              
         
             analog_model.to(self.device)
             analog_model.eval() 
@@ -196,7 +340,7 @@ class InferenceModel(TrainModel):
 
                 #  change the amplification(drift compensation) factor
                 tau = 1 + t/20         # (t0+t)/t0
-                nu_drift = 0.024282    # nu_min 
+                nu_drift = 0.024282    # nu_min for applying DCM 
                 manual_alpha = tau**nu_drift
                 
                 if self.compensation_alpha == 'auto': 
@@ -212,6 +356,9 @@ class InferenceModel(TrainModel):
                         # print(f"[After override]  t={t}, manual alpha = {tile.alpha.item():.4f}")
                         
                 """ -------------- end ------------------------"""
+
+                if self.adabs.enable:
+                    self.apply_adabs(analog_model, current_seed + t_id)
                             
                                 
                 _, test_accuracy = self.get_eval_function()(analog_model, self.testloader)
@@ -276,31 +423,133 @@ class InferenceModel(TrainModel):
             raise ValueError(f"Invalid mode: {self.datatype}. Supported modes are: {list(eval_function_map.keys())}")
 
         return eval_function_map[self.datatype]
+
+
+    def get_adabs_loader(self):
+        """Build a stable calibration loader for AdaBS.
+
+        AdaBS is currently implemented for ResNet18 on CIFAR-10.
+        The loader uses the CIFAR-10 training split without augmentation.
+        """
+
+        if self.datatype != "cifar10":
+            raise ValueError("AdaBS is currently implemented only for CIFAR-10.")
+
+        if self.adabs_loader is None:
+            self.adabs_loader = myModule.set_cifar10_train_eval_loader(
+                batch_size=self.adabs.batch_size,
+                seed=42,
+                shuffle=True,
+            )
+
+        return self.adabs_loader
+
+
+    def get_adabs_momentum(self) -> float:
+        if self.adabs.momentum is not None:
+            return 1.0 - float(self.adabs.momentum)
+
+        # PyTorch BN update rule:
+        # running = (1 - momentum) * running + momentum * batch_stat
+        # Paper rule:
+        # running = p * running + (1 - p) * batch_stat
+        # Therefore PyTorch momentum should be (1 - p)
+        
+        p = float(0.015 ** (1.0 / self.adabs.num_batches))
+        torch_momentum = 1.0 - p
+    
+        return torch_momentum
     
     
-    def ConvertModel(self): 
+    def _debug_bn_running_stats(self,model, tag=""):
+        print(f"\n[DEBUG][{tag}] BN running stats")
+        bn_idx = 0
+        for name, module in model.named_modules():
+            if isinstance(module, nn.BatchNorm2d):
+                rm = module.running_mean.detach().float().cpu()
+                rv = module.running_var.detach().float().cpu()
+                print(
+                    f"  BN{bn_idx:02d} {name}: "
+                    f"mean_abs={rm.abs().mean().item():.6e}, "
+                    f"mean_min={rm.min().item():.6e}, "
+                    f"mean_max={rm.max().item():.6e}, "
+                    f"var_mean={rv.mean().item():.6e}, "
+                    f"var_min={rv.min().item():.6e}, "
+                    f"var_max={rv.max().item():.6e}"
+                )
+                bn_idx += 1
+
+    def apply_adabs(self, model, seed: int) -> None:
+        """Recompute BN running stats using AdaBS calibration batches."""
+
+        if self.datatype != "cifar10":
+            raise ValueError("AdaBS is currently implemented only for CIFAR-10.")
+
+        bn_layers = [module for module in model.modules() if isinstance(module, nn.BatchNorm2d)]
+        if not bn_layers:
+            return
+        
+        
+        momentum = self.get_adabs_momentum()
+        loader = self.get_adabs_loader()
+
+        myModule.fix_seed(seed)
+
+        # Keep all non-BN modules in eval mode while BN layers update running stats.
+        model.eval()
+        
+        # self._debug_bn_running_stats(model, tag="before_reset")
+        
+        for module in model.modules():
+            if isinstance(module, nn.BatchNorm2d):
+                module.train()
+                module.momentum = momentum
+                # module.reset_running_stats()
+            else:
+                module.eval()
+        
+        # self._debug_bn_running_stats(model, tag="after_reset")
+
+        with torch.no_grad():
+            for batch_idx, (images, _) in enumerate(loader):
+                if batch_idx >= self.adabs.num_batches:
+                    break
+
+                images = images.to(self.device)
+                model(images)
+                
+        # self._debug_bn_running_stats(model, tag="after_adabs")
+
+        model.eval()
+        # print(
+        #     f"[AdaBS] Recalibrated {len(bn_layers)} BN layers "
+        #     f"with n={self.adabs.num_batches}, m={self.adabs.batch_size}, p={momentum:.6f}"
+        # )
+    
+    
+    def ConvertModel(self, condition: InferenceCondition): 
         
         # fix seed for reproducibility during mapping
         myModule.fix_seed(seed=42)  
         
         config_args = dict(
-            gdc=self.gdc,
-            ideal_io=self.io,
-            g_min=self.g[0] if self.g is not None else None,
-            g_max=self.g[1] if self.g is not None else None,
-            prog_noise_scale=self.noise[0] if self.noise is not None else None,
-            read_noise_scale=self.noise[1] if self.noise is not None else None,
-            drift_noise_scale=self.noise[2] if self.noise is not None else None,
-            inp_res_bit=self.inp_res_bit,
-            inp_noise=self.inp_noise,
-            out_res_bit=self.out_res_bit,
-            out_noise=self.out_noise,
+            gdc=condition.gdc,
+            ideal_io=condition.ideal_io,
+            g_min=condition.g_list[0] if condition.g_list is not None else None,
+            g_max=condition.g_list[1] if condition.g_list is not None else None,
+            prog_noise_scale=condition.noise[0] if condition.noise is not None else None,
+            read_noise_scale=condition.noise[1] if condition.noise is not None else None,
+            drift_noise_scale=condition.noise[2] if condition.noise is not None else None,
+            inp_res_bit=condition.inp_res_bit,
+            inp_noise=condition.inp_noise,
+            out_res_bit=condition.out_res_bit,
+            out_noise=condition.out_noise,
         )
 
         # Set the mapping methods       
         if self.mapping_method == "naive":
             pcm_config = self.SetConfig(**config_args)
-        elif "myMapping" in self.mapping_method :
+        elif "DCM" in self.mapping_method :
             # for customized Gp-Gm mapping
             pcm_config = self.MappingSetConfig(**config_args)
 
@@ -402,12 +651,22 @@ class InferenceModel(TrainModel):
         out_noise: float = 0.06,
         ):       
         
-        from module.g_converter import MappedConductanceConverter, MappedConductanceConverter2
+        from module.g_converter import MappedConductanceConverter
         
-        if self.mapping_method == "myMapping":
-            g_conv = MappedConductanceConverter(g_max=g_max, g_min=g_min, distortion_f=self.distortion_f)
-        elif self.mapping_method == "myMapping_1yr":
-            g_conv = MappedConductanceConverter2(g_max=g_max, g_min=g_min, distortion_f=self.distortion_f)
+        if self.mapping_method == "DCM":
+            g_conv = MappedConductanceConverter(
+                g_max=g_max,
+                g_min=g_min,
+                distortion_f=self.distortion_f,
+                profile="1month",
+            )
+        elif self.mapping_method == "DCM_1yr":
+            g_conv = MappedConductanceConverter(
+                g_max=g_max,
+                g_min=g_min,
+                distortion_f=self.distortion_f,
+                profile="1year",
+            )
         else:
             raise ValueError(f"Unsupported mapping_method: {self.mapping_method}")
 
@@ -476,9 +735,10 @@ class InferenceModel(TrainModel):
     
     def convert_all_models(self) -> dict:
         analog_models = {}
+        default_condition = self.conditions[0] if self.conditions else InferenceCondition()
         for name, mdl in self.model_dict.items():
             self.model_name = name
             self.model = mdl
-            analog_models[name] = self.ConvertModel() 
+            analog_models[name] = self.ConvertModel(default_condition) 
             
         return analog_models

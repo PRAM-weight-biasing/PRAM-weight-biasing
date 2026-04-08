@@ -279,7 +279,7 @@ class TrainModel:
       
     def eval_cifar10(self, model, test_loader) -> float:
         # model.to(self.device)
-        self.model.eval()
+        model.eval()
 
         total = 0
         correct = 0

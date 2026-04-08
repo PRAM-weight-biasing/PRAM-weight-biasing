@@ -193,6 +193,45 @@ def set_dataloader(data_type: str, seed=42):
                                 worker_init_fn=seed_worker, generator=generator) 
     
     return trainloader, testloader
+
+
+def set_cifar10_train_eval_loader(batch_size=200, seed=42, shuffle=True):
+    """Return a CIFAR-10 train loader without augmentation.
+
+    This is useful for BN-stat recalibration passes such as AdaBS where we
+    want stable dataset statistics from the training split.
+    """
+
+    def seed_worker(worker_id):
+        worker_seed = torch.initial_seed() % 2**32
+        np.random.seed(worker_seed)
+        random.seed(worker_seed)
+
+    generator = torch.Generator()
+    generator.manual_seed(seed)
+
+    cifar10_transform_eval = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2471, 0.2435, 0.2616))
+    ])
+
+    cifar10_train = dsets.CIFAR10(
+        root='dataset/',
+        train=True,
+        download=True,
+        transform=cifar10_transform_eval
+    )
+
+    trainloader = DataLoader(
+        cifar10_train,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=2,
+        worker_init_fn=seed_worker,
+        generator=generator
+    )
+
+    return trainloader
  
 def start_timer():
     global start_time

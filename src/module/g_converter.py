@@ -93,16 +93,38 @@ class MappedConductanceConverter(SinglePairConductanceConverter):
     Assuming a single pair of devices per cross-point, taking positive
     and negative weights, respectively, where mapping method of each device is customized.
     
-    target inference time = 1 month (30 * 24 * 60 * 60 = 2592000 sec)
+    The mapping profile controls the target inference time used when fitting
+    the conductance curves.
     """
     
     def __init__(self, 
                  g_max: Optional[float] = None, 
                  g_min: Optional[float] = None,
-                 distortion_f: Optional[float] = None):
+                 distortion_f: Optional[float] = None,
+                 profile: str = "1month"):
         super().__init__(g_max, g_min)
         
         self.distortion_f = 0.0 if distortion_f is None else distortion_f
+        self.profile = profile.lower()
+
+    def _get_profile_coefficients(self) -> Dict[str, float]:
+        if self.profile == "1month":
+            return {
+                "coeff_a": 2.62671707,
+                "coeff_b_major_gap": self.g_max - self.g_min,
+                "coeff_b_minor": 12.18137246,
+                "coeff_c": 10.02103784,
+            }
+
+        if self.profile == "1year":
+            return {
+                "coeff_a": 2.47102051,
+                "coeff_b_major_gap": self.g_max - self.g_min,
+                "coeff_b_minor": 12.70646285,
+                "coeff_c": 10.17025966,
+            }
+
+        raise ValueError(f"Unsupported DCM profile: {self.profile}")
     
     @no_grad()
     def convert_to_conductances(self, weights: Tensor) -> Tuple[List[Tensor], Dict]:
@@ -117,14 +139,15 @@ class MappedConductanceConverter(SinglePairConductanceConverter):
         # gp = 2.62671707 * scaled_weights**2 + 12.18137246 * scaled_weights + 10.02103784   # best mapping
         # gm = 2.62671707 * scaled_weights**2 - 12.18137246 * scaled_weights + 10.02103784   # best mapping
         
-        # coefficients
-        coeff_a = 2.62671707
-        coeff_b = 12.18137246
-        coeff_c = 10.02103784
+        coefficients = self._get_profile_coefficients()
+        coeff_a = coefficients["coeff_a"]
+        coeff_b_minor = coefficients["coeff_b_minor"]
+        coeff_b_major_gap = coefficients["coeff_b_major_gap"]
+        coeff_c = coefficients["coeff_c"]
         
-        g_minor = coeff_a * abs_w**2 - coeff_b * abs_w + coeff_c 
+        g_minor = coeff_a * abs_w**2 - coeff_b_minor * abs_w + coeff_c 
         g_minor = (1 - self.distortion_f) * g_minor
-        g_major = (abs_w + g_minor / (self.g_max - self.g_min)) * (self.g_max - self.g_min)
+        g_major = g_minor + coeff_b_major_gap * abs_w
 
         gp = torch_where(scaled_weights >= 0, g_major, g_minor)
         gm = torch_where(scaled_weights >= 0, g_minor, g_major)
@@ -156,52 +179,23 @@ class MappedConductanceConverter(SinglePairConductanceConverter):
         weights = scaled_weights / params["scale_ratio"]
 
         return weights
-    
+
+
 class MappedConductanceConverter2(MappedConductanceConverter):
-    """Single pair of devices.
+    """Backward-compatible wrapper for the legacy 1-year DCM converter."""
 
-    Assuming a single pair of devices per cross-point, taking positive
-    and negative weights, respectively, where mapping method of each device is customized.
-    
-    target inference time = 1 year (12 * 30 * 24 * 60 * 60 = 31536000 sec)
-    """
-    
-    def __init__(self, 
-                 g_max: Optional[float] = None, 
-                 g_min: Optional[float] = None,
-                 distortion_f: Optional[float] = None):
-        super().__init__(g_max, g_min)
-        
-        self.distortion_f = 0.0 if distortion_f is None else distortion_f
-    
-    @no_grad()
-    def convert_to_conductances(self, weights: Tensor) -> Tuple[List[Tensor], Dict]:
-        # scaling weights into -1 ~ 1
-        abs_max = torch_abs(weights).max()
-        scale_ratio = 1.0 / abs_max.clamp(min=_ZERO_CLIP)
-        scaled_weights = weights * scale_ratio
-        
-        abs_w = torch_abs(scaled_weights)
-        
-        
-        # coefficients
-        coeff_a = 2.47102051
-        coeff_b = 12.19353715
-        coeff_b1 = 12.70646285
-        coeff_c = 10.17025966
-        
-        g_minor = coeff_a * abs_w**2 - coeff_b1 * abs_w + coeff_c 
-        g_minor = (1 - self.distortion_f) * g_minor
-        g_major = (abs_w + g_minor / (self.g_max - self.g_min)) * (self.g_max - self.g_min)
-
-        gp = torch_where(scaled_weights >= 0, g_major, g_minor)
-        gm = torch_where(scaled_weights >= 0, g_minor, g_major)
-        
-
-        conductances = [gp, gm]
-        params = {"scale_ratio": scale_ratio}  # for reverse conversion
-
-        return conductances, params
+    def __init__(
+        self,
+        g_max: Optional[float] = None,
+        g_min: Optional[float] = None,
+        distortion_f: Optional[float] = None,
+    ):
+        super().__init__(
+            g_max=g_max,
+            g_min=g_min,
+            distortion_f=distortion_f,
+            profile="1year",
+        )
 
    
 
@@ -472,4 +466,3 @@ class CustomPairConductanceConverter(BaseConductanceConverter):
             weights_us += f_factor * (g_plus - g_minus)
 
         return weights_us / params['scale_ratio']   # back to unitless
-

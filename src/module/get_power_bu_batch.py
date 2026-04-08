@@ -12,7 +12,6 @@ from typing import Dict, Any, List, Tuple
 from module.g_converter import (
     SinglePairConductanceConverter,
     MappedConductanceConverter,
-    MappedConductanceConverter2,
 )
 
 # ------------------------------
@@ -21,7 +20,7 @@ from module.g_converter import (
 CONVERTER_MAP = {
     "singlepair": SinglePairConductanceConverter,
     "mapped": MappedConductanceConverter,
-    "mapped_1yr": MappedConductanceConverter2,
+    "mapped_1yr": MappedConductanceConverter,
 }
 
 # ------------------------------
@@ -49,6 +48,11 @@ def _build_converter(cfg: Dict[str, Any]):
     # add optional variables
     if "distortion_f" in cfg:
         kwargs["distortion_f"] = cfg["distortion_f"]
+
+    if ctype == "mapped":
+        kwargs["profile"] = "1month"
+    elif ctype == "mapped_1yr":
+        kwargs["profile"] = "1year"
 
     return converter_cls(**kwargs)
 
