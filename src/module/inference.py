@@ -548,21 +548,14 @@ class InferenceModel(TrainModel):
             out_res_bit=condition.out_res_bit,
             out_noise=condition.out_noise,
         )
-
-        # Set the mapping methods       
-        if self.mapping_method == "naive":
-            pcm_config = self.SetConfig(**config_args)
-        elif "DCM" in self.mapping_method :
-            # for customized Gp-Gm mapping
-            pcm_config = self.MappingSetConfig(**config_args)
-
-        
+             
+        pcm_config = self._SetConfig(**config_args)
         analog_model = convert_to_analog(self.model, pcm_config)
         
         return analog_model
     
-    
-    def SetConfig(
+    # 260409
+    def _SetConfig(
         self, 
         gdc: bool, 
         ideal_io: bool = False,
@@ -576,6 +569,30 @@ class InferenceModel(TrainModel):
         out_res_bit: float = 9, 
         out_noise: float = 0.06,
         ):       
+        
+        # Define the conductance converter for DCM if needed
+        if 'DCM' in self.mapping_method :
+            from module.g_converter import MappedConductanceConverter
+        
+            if self.mapping_method == "DCM":
+                g_conv = MappedConductanceConverter(
+                    g_max=g_max,
+                    g_min=g_min,
+                    distortion_f=self.distortion_f,
+                    profile="1month",
+                )
+            elif self.mapping_method == "DCM_1yr":
+                g_conv = MappedConductanceConverter(
+                    g_max=g_max,
+                    g_min=g_min,
+                    distortion_f=self.distortion_f,
+                    profile="1year",
+                )
+            else:
+                raise ValueError(f"Unsupported mapping_method: {self.mapping_method}")
+            
+        else:
+            g_conv = None
         
         rpu_config = InferenceRPUConfig()
         rpu_config.device = PCMPresetUnitCell()      # paired PCM devices (Gp-Gm)
@@ -583,102 +600,6 @@ class InferenceModel(TrainModel):
         
         # customized noise model
         rpu_config.noise_model = TestNoiseModel(
-            g_max=g_max, 
-            g_min=g_min,
-            prog_noise_scale=prog_noise_scale,
-            read_noise_scale=read_noise_scale,
-            drift_noise_scale=drift_noise_scale,
-            )  
-        
-        # global drift compensation
-        if gdc == True: pass
-        elif gdc == False:
-            rpu_config.drift_compensation = None   
-            
-        # IO parameter settings
-        if ideal_io == True:
-            rpu_config.forward.is_perfect=True   
-             
-        elif ideal_io == False: 
-            # set parameters for non-ideal IO
-            rpu_config.forward = IOParameters(
-                is_perfect=False,
-
-                # === DAC (Input side) ===
-                inp_bound=1.0,                           # DAC input range: [-1, 1]
-                inp_res= 1.0 / (2**inp_res_bit - 2),     # n-bit DAC quantization
-                inp_noise= inp_noise,
-                # inp_sto_round=False,          # enable stochastic rounding in DAC
-                # inp_asymmetry=0.0,            # 1% asymmetry in pos/neg DAC signal
-
-                # === ADC (Output side) ===
-                out_bound=12.0,                         # ADC saturation limit (max current)
-                out_res= 1.0 / (2**out_res_bit - 2),    # n-bit DAC quantization      
-                out_noise= out_noise,         
-                # out_noise_std=0.1,             # 10% std variation across outputs
-                # out_sto_round=False,            # enable stochastic rounding in ADC
-                # out_asymmetry=0.005,           # 0.5% asymmetry in negative pass output
-
-                # === Bound & Noise management (recommended for analog) : As default setting ===
-                # bound_management=BoundManagementType.ITERATIVE,
-                # noise_management=NoiseManagementType.ABS_MAX,
-
-                # === etc. non-ideality : As default setting===
-                # w_noise=0.0,                   
-                # w_noise_type=WeightNoiseType.NONE,
-                # ir_drop=0.0,
-                # out_nonlinearity=0.0,
-                # r_series=0.0
-                
-                # from example (if needed)
-                # out_res = -1.0  # Turn off (output) ADC discretization.
-                # w_noise_type = WeightNoiseType.ADDITIVE_CONSTANT
-                # w_noise = 0.02  # Short-term w-noise.       
-            )
-
-        return rpu_config
-
-
-    def MappingSetConfig(
-        self, 
-        gdc: bool, 
-        ideal_io: bool = False,
-        g_max: Optional[float] = None,
-        g_min: Optional[float] = None,
-        prog_noise_scale: Optional[float] = None,
-        read_noise_scale: Optional[float] = None,
-        drift_noise_scale: Optional[float] = None,
-        inp_res_bit: float = 7, 
-        inp_noise: float = 0.0,           
-        out_res_bit: float = 9, 
-        out_noise: float = 0.06,
-        ):       
-        
-        from module.g_converter import MappedConductanceConverter
-        
-        if self.mapping_method == "DCM":
-            g_conv = MappedConductanceConverter(
-                g_max=g_max,
-                g_min=g_min,
-                distortion_f=self.distortion_f,
-                profile="1month",
-            )
-        elif self.mapping_method == "DCM_1yr":
-            g_conv = MappedConductanceConverter(
-                g_max=g_max,
-                g_min=g_min,
-                distortion_f=self.distortion_f,
-                profile="1year",
-            )
-        else:
-            raise ValueError(f"Unsupported mapping_method: {self.mapping_method}")
-
-        rpu_config = InferenceRPUConfig()
-        rpu_config.device = PCMPresetUnitCell()      # paired PCM devices (Gp-Gm)
-        rpu_config.mapping.weight_scaling_omega = 1.0  
-        
-        # customized noise model
-        rpu_config.noise_model = MappingNoiseModel(
             g_max=g_max, 
             g_min=g_min,
             prog_noise_scale=prog_noise_scale,
@@ -733,8 +654,8 @@ class InferenceModel(TrainModel):
                 # w_noise = 0.02  # Short-term w-noise.       
             )
 
-        return rpu_config 
-    
+        return rpu_config
+       
     
     def convert_all_models(self) -> dict:
         analog_models = {}
