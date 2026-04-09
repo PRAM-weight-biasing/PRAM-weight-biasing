@@ -261,12 +261,15 @@ class InferenceModel(TrainModel):
         # Save results
         io_res_tag = str(condition.io_res_bits)
         adabs_tag = f"_adabs-{self.adabs.enable}"
+        distortion_tag = ""
+        if self.distortion_f is not None:
+            distortion_tag = f"_distortion-{self.distortion_f:.1f}"
         filename = (
             f"../results/results_{self.mapping_method}"
             f"_gdc-{condition.gdc}"
             f"_io-{condition.ideal_io}"
             f"_noise-{condition.noise}"
-            f"_{io_res_tag}{adabs_tag}.xlsx"
+            f"_{io_res_tag}{distortion_tag}{adabs_tag}.xlsx"
         )
         df = pd.DataFrame(all_results, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
         df.to_excel(filename, index=False, engine='openpyxl')
