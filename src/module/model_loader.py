@@ -12,11 +12,11 @@ class ModelLoader:
     dir_name = os.path.abspath(os.path.join(os.getcwd(), os.pardir, 'model', 'pruned'))
 
     name_list = [
-        # 'vanilla-Resnet18',
+        'vanilla-Resnet18',
         'Resnet18_p0.2',
         # 'Resnet18_p0.3',
         'Resnet18_p0.4',
-        # 'Resnet18_p0.5',
+        # # 'Resnet18_p0.5',
         'Resnet18_p0.6',
         # 'Resnet18_p0.7',
         'Resnet18_p0.8',

@@ -259,7 +259,7 @@ class InferenceModel(TrainModel):
             all_results.extend(results)
 
         # Save results
-        io_res_tag = str(condition.io_res_bits)
+        io_res_tag = f"_io-{condition.io_res_bits}"
         adabs_tag = f"_adabs-{self.adabs.enable}"
         distortion_tag = ""
         if self.distortion_f is not None:
