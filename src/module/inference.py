@@ -9,7 +9,7 @@ from itertools import product
 import numpy as np
 import pandas as pd 
 from tqdm import tqdm
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 import torch.nn as nn
@@ -36,9 +36,19 @@ class AdaBSConfig:
 
 
 @dataclass(frozen=True)
+class IRDropConfig:
+    enable: bool = False
+    ir_drop: Union[float, list] = 1.0
+    ir_drop_g_ratio: Union[float, list] = 1.0 / 0.35 / 5e-6
+
+
+@dataclass(frozen=True)
 class InferenceCondition:
     gdc: bool = True
     ideal_io: bool = False
+    use_irdrop: bool = False
+    ir_drop: float = 1.0
+    ir_drop_g_ratio: float = 1.0 / 0.35 / 5e-6
     noise: Optional[list] = None
     g_list: Optional[list] = None
     io_res_bits: Optional[list] = None
@@ -73,12 +83,16 @@ class InferenceModel(TrainModel):
         mapping_method="naive",
         conditions: Optional[list] = None,
         adabs: Optional[AdaBSConfig] = None,
+        irdrop: Optional[IRDropConfig] = None,
         gdc_list: Optional[list]=None,
         io_list: Optional[list]=None,
         noise_list: Optional[list]=None,         
         g_list: Optional[list] =None,             
         io_res_list: Optional[list] =None,       
         io_noise_list: Optional[list] = None,   
+        ir_drop_list: Optional[list] = None,
+        ir_drop_value_list: Optional[list] = None,
+        ir_drop_g_ratio_list: Optional[list] = None,
         distortion_f: Optional[float] = None,
         compensation_alpha: Optional[str] = 'auto',
         adabs_enable: bool = False,
@@ -97,6 +111,11 @@ class InferenceModel(TrainModel):
         self.mapping_method = mapping_method
         self.distortion_f = distortion_f
         self.compensation_alpha = compensation_alpha
+        self.irdrop = irdrop or self._build_irdrop_config(
+            ir_drop_list=ir_drop_list,
+            ir_drop_value_list=ir_drop_value_list,
+            ir_drop_g_ratio_list=ir_drop_g_ratio_list,
+        )
         self.conditions = conditions or self.build_conditions(
             gdc_list=gdc_list,
             io_list=io_list,
@@ -104,6 +123,7 @@ class InferenceModel(TrainModel):
             g_list=g_list,
             io_res_list=io_res_list,
             io_noise_list=io_noise_list,
+            irdrop=self.irdrop,
         )
         self.adabs = adabs or AdaBSConfig(
             enable=adabs_enable,
@@ -112,6 +132,27 @@ class InferenceModel(TrainModel):
             momentum=adabs_momentum,
         )
         self.adabs_loader = None
+
+    @staticmethod
+    def _build_irdrop_config(
+        ir_drop_list: Optional[list] = None,
+        ir_drop_value_list: Optional[list] = None,
+        ir_drop_g_ratio_list: Optional[list] = None,
+    ) -> IRDropConfig:
+        """Build IR-drop config from legacy list-based arguments."""
+
+        enable = False if ir_drop_list is None else bool(ir_drop_list[0])
+        ir_drop: Union[float, list] = 1.0 if ir_drop_value_list is None else ir_drop_value_list
+        ir_drop_g_ratio: Union[float, list] = (
+            1.0 / 0.35 / 5e-6 if ir_drop_g_ratio_list is None else ir_drop_g_ratio_list
+        )
+
+        if isinstance(ir_drop, list) and len(ir_drop) == 1:
+            ir_drop = ir_drop[0]
+        if isinstance(ir_drop_g_ratio, list) and len(ir_drop_g_ratio) == 1:
+            ir_drop_g_ratio = ir_drop_g_ratio[0]
+
+        return IRDropConfig(enable=enable, ir_drop=ir_drop, ir_drop_g_ratio=ir_drop_g_ratio)
      
     @staticmethod
     def _normalize_grid(value, treat_list_as_single: bool = False) -> list:
@@ -163,6 +204,7 @@ class InferenceModel(TrainModel):
         g_list: Optional[list] = None,
         io_res_list: Optional[list] = None,
         io_noise_list: Optional[list] = None,
+        irdrop: Optional[IRDropConfig] = None,
     ) -> list:
         """Create a flat list of inference conditions from option grids."""
 
@@ -190,19 +232,33 @@ class InferenceModel(TrainModel):
             io_noise_list,
             treat_list_as_single=True,
         )
+        irdrop = irdrop or IRDropConfig()
+        normalized_irdrop = InferenceModel._normalize_grid(
+            irdrop.ir_drop,
+            treat_list_as_single=False,
+        )
+        normalized_irdrop_g_ratio = InferenceModel._normalize_grid(
+            irdrop.ir_drop_g_ratio,
+            treat_list_as_single=False,
+        )
 
         return [
             InferenceCondition(
                 gdc=gdc,
                 ideal_io=ideal_io,
+                use_irdrop=irdrop.enable,
+                ir_drop=ir_drop,
+                ir_drop_g_ratio=ir_drop_g_ratio,
                 noise=noise,
                 g_list=g_range,
                 io_res_bits=io_res_bits,
                 io_noise=io_noise,
             )
-            for ideal_io, gdc, noise, g_range, io_res_bits, io_noise in product(
+            for ideal_io, gdc, ir_drop, ir_drop_g_ratio, noise, g_range, io_res_bits, io_noise in product(
                 normalized_io,
                 normalized_gdc,
+                normalized_irdrop,
+                normalized_irdrop_g_ratio,
                 normalized_noise,
                 normalized_g,
                 normalized_io_res,
@@ -223,8 +279,14 @@ class InferenceModel(TrainModel):
             f"\nRunning inference with mapping={self.mapping_method}"
             f" | gdc={condition.gdc}"
             f" | ideal_io={condition.ideal_io}"
+            f" | use_irdrop={condition.use_irdrop}"
             f" | noise={condition.noise}"
         )
+        if condition.use_irdrop:
+            msg += (
+                f"| ir_drop={condition.ir_drop}"
+                f"| ir_drop_g_ratio={condition.ir_drop_g_ratio}"
+            )
         if condition.g_list is not None:
             msg += f"| g_list={condition.g_list}"
         if condition.io_res_bits is not None:
@@ -259,8 +321,13 @@ class InferenceModel(TrainModel):
             all_results.extend(results)
 
         # Save results
-        io_res_tag = f"_io-{condition.io_res_bits}"
+        io_res_tag = f"_io-res-{condition.io_res_bits}"
         adabs_tag = f"_adabs-{self.adabs.enable}"
+        irdrop_tag = f"_irdrop-{condition.use_irdrop}"
+        if condition.use_irdrop:
+            irdrop_tag += (
+                f"_gratio-{condition.ir_drop_g_ratio:g}"
+            )
         distortion_tag = ""
         if self.distortion_f is not None:
             distortion_tag = f"_distortion-{self.distortion_f:.1f}"
@@ -269,7 +336,7 @@ class InferenceModel(TrainModel):
             f"_gdc-{condition.gdc}"
             f"_io-{condition.ideal_io}"
             f"_noise-{condition.noise}"
-            f"_{io_res_tag}{distortion_tag}{adabs_tag}.xlsx"
+            f"{io_res_tag}{distortion_tag}{adabs_tag}{irdrop_tag}.xlsx"
         )
         df = pd.DataFrame(all_results, columns=["model", "Time (s)", "Mean Accuracy", "Std Accuracy"])
         df.to_excel(filename, index=False, engine='openpyxl')
@@ -301,15 +368,15 @@ class InferenceModel(TrainModel):
                
         rep_results = []  # Store results for each repetition
         t_inferences = [
-            1,                         # 1 sec
-            60,                        # 1 min
-            100,
-            60 * 60,                   # 1 hour
-            24 * 60 * 60,              # 1 day
+            # 1,                         # 1 sec
+            # 60,                        # 1 min
+            # 100,
+            # 60 * 60,                   # 1 hour
+            # 24 * 60 * 60,              # 1 day
             30 * 24 * 60 * 60,         # 1 month
-            12 * 30 * 24 * 60 * 60,    # 1 year
-            36 * 30 * 24 * 60 * 60,    # 3 year
-            1e9,
+            # 12 * 30 * 24 * 60 * 60,    # 1 year
+            # 36 * 30 * 24 * 60 * 60,    # 3 year
+            # 1e9,
             ]
         
         # for rep in range(n_rep_hw):
@@ -331,7 +398,8 @@ class InferenceModel(TrainModel):
                 
                  # fix seed for reproducibility when applying the gaussian noise
                 torch.manual_seed(current_seed)
-                torch.cuda.manual_seed(current_seed)
+                if torch.cuda.is_available():
+                    torch.cuda.manual_seed(current_seed)
                 
                 # inference
                 analog_model.drift_analog_weights(t)
@@ -538,6 +606,9 @@ class InferenceModel(TrainModel):
         config_args = dict(
             gdc=condition.gdc,
             ideal_io=condition.ideal_io,
+            use_irdrop=condition.use_irdrop,
+            ir_drop=condition.ir_drop,
+            ir_drop_g_ratio=condition.ir_drop_g_ratio,
             g_min=condition.g_list[0] if condition.g_list is not None else None,
             g_max=condition.g_list[1] if condition.g_list is not None else None,
             prog_noise_scale=condition.noise[0] if condition.noise is not None else None,
@@ -558,7 +629,10 @@ class InferenceModel(TrainModel):
     def _SetConfig(
         self, 
         gdc: bool, 
-        ideal_io: bool = False,
+        ideal_io: bool = True,
+        use_irdrop: bool = False,
+        ir_drop: float = 1.0,
+        ir_drop_g_ratio: float = 1.0 / 0.35 / 5e-6,
         g_max: Optional[float] = None,
         g_min: Optional[float] = None,
         prog_noise_scale: Optional[float] = None,
@@ -593,7 +667,7 @@ class InferenceModel(TrainModel):
             
         else:
             g_conv = None
-        
+
         rpu_config = InferenceRPUConfig()
         rpu_config.device = PCMPresetUnitCell()      # paired PCM devices (Gp-Gm)
         rpu_config.mapping.weight_scaling_omega = 1.0  
@@ -612,46 +686,44 @@ class InferenceModel(TrainModel):
         if gdc == True: pass
         elif gdc == False:
             rpu_config.drift_compensation = None   
-            
+
+        io_common = dict(
+            is_perfect=False,
+
+            # === DAC (Input side) ===
+            inp_bound=1.0,                           # DAC input range: [-1, 1]
+            inp_res=1.0 / (2**inp_res_bit - 2),      # n-bit DAC quantization
+            inp_noise=inp_noise,
+            # inp_sto_round=False,          # enable stochastic rounding in DAC
+            # inp_asymmetry=0.0,            # 1% asymmetry in pos/neg DAC signal
+
+            # === ADC (Output side) ===
+            out_bound=12.0,                          # ADC saturation limit (max current)
+            out_res=1.0 / (2**out_res_bit - 2),      # n-bit DAC quantization
+            out_noise=out_noise,
+            # out_noise_std=0.1,             # 10% std variation across outputs
+            # out_sto_round=False,            # enable stochastic rounding in ADC
+            # out_asymmetry=0.005,           # 0.5% asymmetry in negative pass output
+
+            # === Bound & Noise management (recommended for analog) : As default setting ===
+            # bound_management=BoundManagementType.ITERATIVE,
+            # noise_management=NoiseManagementType.ABS_MAX,
+
+            # === etc. non-ideality : As default setting===
+            # w_noise=0.0,
+            # w_noise_type=WeightNoiseType.NONE,
+            # out_nonlinearity=0.0,
+            # r_series=0.0
+        )
+
         # IO parameter settings
         if ideal_io == True:
-            rpu_config.forward.is_perfect=True   
-             
-        elif ideal_io == False: 
-            # set parameters for non-ideal IO
+            rpu_config.forward.is_perfect = True
+        else:
             rpu_config.forward = IOParameters(
-                is_perfect=False,
-
-                # === DAC (Input side) ===
-                inp_bound=1.0,                           # DAC input range: [-1, 1]
-                inp_res= 1.0 / (2**inp_res_bit - 2),     # n-bit DAC quantization
-                inp_noise= inp_noise,
-                # inp_sto_round=False,          # enable stochastic rounding in DAC
-                # inp_asymmetry=0.0,            # 1% asymmetry in pos/neg DAC signal
-
-                # === ADC (Output side) ===
-                out_bound=12.0,                         # ADC saturation limit (max current)
-                out_res= 1.0 / (2**out_res_bit - 2),    # n-bit DAC quantization      
-                out_noise= out_noise,         
-                # out_noise_std=0.1,             # 10% std variation across outputs
-                # out_sto_round=False,            # enable stochastic rounding in ADC
-                # out_asymmetry=0.005,           # 0.5% asymmetry in negative pass output
-
-                # === Bound & Noise management (recommended for analog) : As default setting ===
-                # bound_management=BoundManagementType.ITERATIVE,
-                # noise_management=NoiseManagementType.ABS_MAX,
-
-                # === etc. non-ideality : As default setting===
-                # w_noise=0.0,                   
-                # w_noise_type=WeightNoiseType.NONE,
-                # ir_drop=0.0,
-                # out_nonlinearity=0.0,
-                # r_series=0.0
-                
-                # from example (if needed)
-                # out_res = -1.0  # Turn off (output) ADC discretization.
-                # w_noise_type = WeightNoiseType.ADDITIVE_CONSTANT
-                # w_noise = 0.02  # Short-term w-noise.       
+                **io_common,
+                ir_drop=ir_drop if use_irdrop else 0.0,
+                ir_drop_g_ratio=ir_drop_g_ratio,
             )
 
         return rpu_config
