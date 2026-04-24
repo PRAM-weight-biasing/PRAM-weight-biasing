@@ -368,15 +368,15 @@ class InferenceModel(TrainModel):
                
         rep_results = []  # Store results for each repetition
         t_inferences = [
-            # 1,                         # 1 sec
-            # 60,                        # 1 min
-            # 100,
-            # 60 * 60,                   # 1 hour
-            # 24 * 60 * 60,              # 1 day
+            1,                         # 1 sec
+            60,                        # 1 min
+            100,
+            60 * 60,                   # 1 hour
+            24 * 60 * 60,              # 1 day
             30 * 24 * 60 * 60,         # 1 month
-            # 12 * 30 * 24 * 60 * 60,    # 1 year
-            # 36 * 30 * 24 * 60 * 60,    # 3 year
-            # 1e9,
+            12 * 30 * 24 * 60 * 60,    # 1 year
+            36 * 30 * 24 * 60 * 60,    # 3 year
+            1e9,
             ]
         
         # for rep in range(n_rep_hw):

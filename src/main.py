@@ -22,14 +22,14 @@ gdc_list = [True]
 io_list = [False]
 noise_list = [[0,0,1]]       #   [[0,0,0], [0,0,1], [0,1,1], [1,1,1]]  // [[0,0,0], [0,0,0.25], [0,0,0.5], [0,0,1], [0,0,1.5]]  
 g_list = [[0.1, 25]]          # add more: [[0.1,25], [0.2,25]]
-io_res_list = [[7,8], [7,9]]     # ex) [[7, 7]]
+io_res_list = [[7,9]]     # ex) [[7, 7]]
 io_noise_list = [[0.0, 0.0]]   # ex) [[0.0, 0.0]]
 
 
 irdrop = IRDropConfig(
-    enable=True,
+    enable=False,
     ir_drop=1.0,  # row-direction IR-drop strength
-    ir_drop_g_ratio= [(1.0 / 0.1 / 25e-6), (1.0 / 1.0 / 25e-6), (1.0 / 2.0 / 25e-6), (1.0 / 5.0 / 25e-6)]   # G_wire / G_max = 1 / R_wire / G_max
+    ir_drop_g_ratio= [(1.0 / 10.0 / 25e-6)]   # G_wire / G_max = 1 / R_wire / G_max
 )
 
 adabs = AdaBSConfig(
